@@ -29,6 +29,8 @@ if (-not $appId) {
 }
 $sp = Invoke-Az ad sp list --filter "appId eq '$appId'" --query "[0].id" -o tsv
 if (-not $sp) { $sp = Invoke-Az ad sp create --id $appId --query id -o tsv }
+# Without this tag the portal hides the service principal from Enterprise applications.
+Invoke-Az ad sp update --id $sp --set "tags=['WindowsAzureActiveDirectoryIntegratedApp']" | Out-Null
 Invoke-Az ad app update --id $appId --set groupMembershipClaims=SecurityGroup | Out-Null
 Invoke-Az ad sp update --id $sp --set appRoleAssignmentRequired=true | Out-Null   # only assigned users and groups can sign in
 $secret = Invoke-Az ad app credential reset --id $appId --display-name "app-service" --years 2 --query password -o tsv
@@ -56,4 +58,5 @@ if ($AllowedGroupId) {
   Invoke-Az webapp config appsettings set -g $ResourceGroup -n $SiteName --settings ALLOW_ANY_AUTHENTICATED=1 | Out-Null
 }
 Write-Host "Done. Client ID: $appId"
-Write-Host "Assign users or groups: Entra > Enterprise applications > $name. Then open https://$SiteName.azurewebsites.net"
+Write-Host "Assign users or groups: https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ManagedAppMenuBlade/~/Users/objectId/$sp/appId/$appId"
+Write-Host "(or Entra > Enterprise applications > $name). Then open https://$SiteName.azurewebsites.net"
