@@ -1,0 +1,25 @@
+name: Build and release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, }
+      - run: npm install
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
+      # zip root: server/index.mjs and web/ (what the template's startup command expects)
+      - run: cd dist && zip -r ../app.zip server web
+      - name: Publish rolling "latest" release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh release view latest >/dev/null 2>&1 || gh release create latest --title "Latest build" --notes "Built from the newest commit on main." --latest
+          gh release upload latest app.zip --clobber
+          gh release edit latest --notes "Built from commit ${GITHUB_SHA}"

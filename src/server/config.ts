@@ -16,6 +16,7 @@ export interface Config {
   allowedUsers: string[];
   allowAnyAuthenticated: boolean; // rely on Entra "Assignment required" alone
   staticDir: string;
+  easyAuthEnabled: boolean; // App Service sets WEBSITE_AUTH_ENABLED=True when authentication is switched on
 }
 
 const list = (v?: string) =>
@@ -54,5 +55,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowedUsers: list(env.ALLOWED_USER_IDS),
     allowAnyAuthenticated: env.ALLOW_ANY_AUTHENTICATED === '1',
     staticDir,
+    easyAuthEnabled: env.WEBSITE_AUTH_ENABLED === 'True',
   };
 }
