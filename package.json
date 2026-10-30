@@ -1,0 +1,35 @@
+{
+  "name": "imdf-places-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:server": "tsx watch src/server/index.ts",
+    "dev:web": "vite",
+    "build:web": "vite build",
+    "build:server": "esbuild src/server/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/server/index.mjs --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "build": "npm run build:web && npm run build:server",
+    "start": "node dist/server/index.mjs",
+    "test": "node --experimental-strip-types --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "@azure/storage-blob": "^12.26.0",
+    "maplibre-gl": "^5.0.0",
+    "pdfjs-dist": "^6.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  }
+}
