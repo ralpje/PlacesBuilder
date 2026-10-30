@@ -10,7 +10,7 @@ export interface User {
 
 export type AuthResult =
   | { ok: true; user: User }
-  | { ok: false; status: 401 | 403; message: string };
+  | { ok: false; status: 401 | 403 | 503; message: string };
 
 const ROLE_TYPES = new Set(['roles', 'role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role']);
 const OID_TYPES = new Set(['oid', 'http://schemas.microsoft.com/identity/claims/objectidentifier']);
@@ -47,6 +47,11 @@ export function decodePrincipal(headers: IncomingHttpHeaders): User | null {
  */
 export function authenticate(headers: IncomingHttpHeaders, cfg: Config): AuthResult {
   if (cfg.devAuth) return { ok: true, user: { id: 'dev', name: 'Local developer', roles: ['Admin'], groups: [] } };
+
+  // Without Easy Auth nobody strips a forged X-MS-CLIENT-PRINCIPAL header, so never trust it in that case.
+  if (cfg.production && !cfg.easyAuthEnabled) {
+    return { ok: false, status: 503, message: 'App Service authentication is not enabled yet. Run scripts/configure-auth.ps1.' };
+  }
 
   const user = decodePrincipal(headers);
   if (!user) return { ok: false, status: 401, message: 'Sign-in required.' };

@@ -1,0 +1,286 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "IMDF Builder for Places: Linux Web App (Node 22) running a prebuilt package, Blob Storage via managed identity, optional Azure Maps for satellite imagery, optional Entra sign-in."
+  },
+  "parameters": {
+    "siteName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 40,
+      "metadata": {
+        "description": "Globally unique web app name. The site becomes https://<siteName>.azurewebsites.net. Lowercase letters, digits and hyphens."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Region for all resources."
+      }
+    },
+    "planSku": {
+      "type": "string",
+      "defaultValue": "B1",
+      "allowedValues": [
+        "B1",
+        "B2",
+        "B3",
+        "P0v3",
+        "P1v3"
+      ],
+      "metadata": {
+        "description": "App Service plan size. B1 is enough for a handful of users."
+      }
+    },
+    "packageUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/ralpje/PlacesBuilder/releases/latest/download/app.zip",
+      "metadata": {
+        "description": "URL of the prebuilt app package (zip). The app runs straight from this file and fetches it again at every restart, so restarting the app updates it."
+      }
+    },
+    "entraClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional. Client ID of an existing Entra app registration. Leave empty to run scripts/configure-auth.ps1 after deployment, which creates it for you."
+      }
+    },
+    "entraClientSecret": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Client secret for the app registration above. Only needed together with entraClientId."
+      }
+    },
+    "allowedGroupIds": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Comma-separated Entra group object IDs allowed to use the app. Needs the groups claim on the app registration."
+      }
+    },
+    "allowedUserIds": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Comma-separated Entra user object IDs allowed to use the app."
+      }
+    },
+    "allowAnyTenantUser": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Let every user of your tenant in (set this only if the enterprise application has 'Assignment required' = Yes). With no group, user or this switch the app denies everyone."
+      }
+    }
+  },
+  "variables": {
+    "suffix": "[take(uniqueString(resourceGroup().id, parameters('siteName')), 6)]",
+    "planName": "[concat('plan-', parameters('siteName'))]",
+    "storageName": "[toLower(take(concat('st', replace(parameters('siteName'), '-', ''), variables('suffix')), 24))]",
+    "mapsName": "[concat('maps-', parameters('siteName'))]",
+    "container": "imdf",
+    "storageRole": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "mapsRole": "423170ca-a8f6-4b0f-8487-9e4eb8f49bfa",
+    "hasAuth": "[and(not(empty(parameters('entraClientId'))), not(empty(parameters('entraClientSecret'))))]",
+    "mapsSettings": "[createObject('BASEMAP', 'azure', 'AZURE_MAPS_CLIENT_ID', reference(resourceId('Microsoft.Maps/accounts', variables('mapsName')), '2023-06-01').uniqueId)]",
+    "authSettings": "[if(variables('hasAuth'), createObject('MICROSOFT_PROVIDER_AUTHENTICATION_SECRET', parameters('entraClientSecret')), createObject())]",
+    "baseSettings": {
+      "WEBSITE_RUN_FROM_PACKAGE": "[parameters('packageUrl')]",
+      "NODE_ENV": "production",
+      "STORAGE_CONTAINER": "[variables('container')]",
+      "STORAGE_ACCOUNT_URL": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').primaryEndpoints.blob]",
+      "ALLOWED_GROUP_IDS": "[parameters('allowedGroupIds')]",
+      "ALLOWED_USER_IDS": "[parameters('allowedUserIds')]",
+      "ALLOW_ANY_AUTHENTICATED": "[if(parameters('allowAnyTenantUser'), '1', '0')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[concat(variables('storageName'), '/default/', variables('container'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ],
+      "properties": {
+        "publicAccess": "None"
+      }
+    },
+    {
+      "type": "Microsoft.Maps/accounts",
+      "apiVersion": "2023-06-01",
+      "name": "[variables('mapsName')]",
+      "location": "global",
+      "sku": {
+        "name": "G2"
+      },
+      "kind": "Gen2",
+      "properties": {
+        "disableLocalAuth": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[variables('planName')]",
+      "location": "[parameters('location')]",
+      "kind": "linux",
+      "sku": {
+        "name": "[parameters('planSku')]"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('siteName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
+        "httpsOnly": true,
+        "clientAffinityEnabled": false,
+        "siteConfig": {
+          "linuxFxVersion": "NODE|22-lts",
+          "appCommandLine": "node server/index.mjs",
+          "alwaysOn": true,
+          "ftpsState": "Disabled",
+          "minTlsVersion": "1.2",
+          "http20Enabled": true,
+          "healthCheckPath": "/healthz"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2023-12-01",
+      "name": "[concat(parameters('siteName'), '/appsettings')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+        "[resourceId('Microsoft.Maps/accounts', variables('mapsName'))]"
+      ],
+      "properties": "[union(variables('baseSettings'), variables('mapsSettings'), variables('authSettings'))]"
+    },
+    {
+      "condition": "[variables('hasAuth')]",
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2023-12-01",
+      "name": "[concat(parameters('siteName'), '/authsettingsV2')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites/config', parameters('siteName'), 'appsettings')]"
+      ],
+      "properties": {
+        "platform": {
+          "enabled": true,
+          "runtimeVersion": "~1"
+        },
+        "globalValidation": {
+          "requireAuthentication": true,
+          "unauthenticatedClientAction": "RedirectToLoginPage",
+          "redirectToProvider": "azureactivedirectory",
+          "excludedPaths": [
+            "/healthz"
+          ]
+        },
+        "identityProviders": {
+          "azureActiveDirectory": {
+            "enabled": true,
+            "registration": {
+              "openIdIssuer": "[concat('https://login.microsoftonline.com/', tenant().tenantId, '/v2.0')]",
+              "clientId": "[parameters('entraClientId')]",
+              "clientSecretSettingName": "MICROSOFT_PROVIDER_AUTHENTICATION_SECRET"
+            },
+            "validation": {
+              "allowedAudiences": [
+                "[concat('api://', parameters('entraClientId'))]",
+                "[parameters('entraClientId')]"
+              ]
+            }
+          }
+        },
+        "login": {
+          "tokenStore": {
+            "enabled": false
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), parameters('siteName'), variables('storageRole'))]",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageRole'))]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('siteName')), '2023-12-01', 'Full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Maps/accounts', variables('mapsName')), parameters('siteName'), variables('mapsRole'))]",
+      "scope": "[resourceId('Microsoft.Maps/accounts', variables('mapsName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]",
+        "[resourceId('Microsoft.Maps/accounts', variables('mapsName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('mapsRole'))]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('siteName')), '2023-12-01', 'Full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      }
+    }
+  ],
+  "outputs": {
+    "siteUrl": {
+      "type": "string",
+      "value": "[concat('https://', parameters('siteName'), '.azurewebsites.net')]"
+    },
+    "redirectUri": {
+      "type": "string",
+      "value": "[concat('https://', parameters('siteName'), '.azurewebsites.net/.auth/login/aad/callback')]"
+    },
+    "storageAccount": {
+      "type": "string",
+      "value": "[variables('storageName')]"
+    },
+    "nextStep": {
+      "type": "string",
+      "value": "[if(variables('hasAuth'), 'Done. Open the site url.', 'Run scripts/configure-auth.ps1 to enable Entra sign-in. Until then the app refuses all requests.')]"
+    }
+  }
+}
