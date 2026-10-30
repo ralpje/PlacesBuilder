@@ -86,13 +86,11 @@
     "storageRole": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
     "mapsRole": "423170ca-a8f6-4b0f-8487-9e4eb8f49bfa",
     "hasAuth": "[and(not(empty(parameters('entraClientId'))), not(empty(parameters('entraClientSecret'))))]",
-    "mapsSettings": "[createObject('BASEMAP', 'azure', 'AZURE_MAPS_CLIENT_ID', reference(resourceId('Microsoft.Maps/accounts', variables('mapsName')), '2023-06-01').uniqueId)]",
     "authSettings": "[if(variables('hasAuth'), createObject('MICROSOFT_PROVIDER_AUTHENTICATION_SECRET', parameters('entraClientSecret')), createObject())]",
     "baseSettings": {
       "WEBSITE_RUN_FROM_PACKAGE": "[parameters('packageUrl')]",
       "NODE_ENV": "production",
       "STORAGE_CONTAINER": "[variables('container')]",
-      "STORAGE_ACCOUNT_URL": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').primaryEndpoints.blob]",
       "ALLOWED_GROUP_IDS": "[parameters('allowedGroupIds')]",
       "ALLOWED_USER_IDS": "[parameters('allowedUserIds')]",
       "ALLOW_ANY_AUTHENTICATED": "[if(parameters('allowAnyTenantUser'), '1', '0')]"
