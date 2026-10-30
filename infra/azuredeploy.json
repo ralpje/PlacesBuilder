@@ -186,7 +186,7 @@
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
         "[resourceId('Microsoft.Maps/accounts', variables('mapsName'))]"
       ],
-      "properties": "[union(variables('baseSettings'), variables('mapsSettings'), variables('authSettings'))]"
+      "properties": "[union(variables('baseSettings'), variables('authSettings'), createObject('STORAGE_ACCOUNT_URL', reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageName')), '2023-05-01').primaryEndpoints.blob, 'BASEMAP', 'azure', 'AZURE_MAPS_CLIENT_ID', reference(resourceId('Microsoft.Maps/accounts', variables('mapsName')), '2023-06-01').uniqueId))]"
     },
     {
       "condition": "[variables('hasAuth')]",
