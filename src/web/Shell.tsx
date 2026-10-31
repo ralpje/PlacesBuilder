@@ -22,12 +22,16 @@ const icon = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 );
 
+// App Service authentication (Easy Auth) clears the session cookie and signs out at Entra.
+const SIGN_OUT_URL = '/.auth/logout?post_logout_redirect_uri=/';
+
 export function Shell({ children, page }: { children: (me: MeInfo | null) => ReactNode; page?: string }) {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [me, setMe] = useState<MeInfo | null>(null);
   const [meLoaded, setMeLoaded] = useState(false);
   const name = me?.name ?? '';
   const [serverVersion, setServerVersion] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { api.me().then(setMe).catch(() => undefined).finally(() => setMeLoaded(true)); }, []);
   useEffect(() => { api.config().then((c) => setServerVersion(c.version)).catch(() => undefined); }, []);
@@ -45,11 +49,19 @@ export function Shell({ children, page }: { children: (me: MeInfo | null) => Rea
           <a className={page === 'team' ? 'nav active' : 'nav'} href="#/team">{icon('M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0z M4 21a8 8 0 0 1 16 0')}Team</a>
         )}
         <div className="grow" />
+        {name && <a className="nav signout-mobile" href={SIGN_OUT_URL}>Sign out</a>}
         <button className="theme" onClick={() => setTheme(next)} title="Switch theme">Theme: {theme}</button>
         {name && (
-          <div className="user">
-            <span className="avatar">{initials}</span>
-            <span className="who">{name}</span>
+          <div className="usermenu">
+            {menuOpen && (
+              <div className="popover" role="menu">
+                <a role="menuitem" href={SIGN_OUT_URL}>Sign out</a>
+              </div>
+            )}
+            <button className="user" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} onKeyDown={(e) => { if (e.key === 'Escape') setMenuOpen(false); }}>
+              <span className="avatar">{initials}</span>
+              <span className="who">{name}</span>
+            </button>
           </div>
         )}
         <div className="version">
