@@ -4,6 +4,7 @@ import { OfficesPage } from './pages/Offices.tsx';
 import { OfficePage } from './pages/Office.tsx';
 import { FloorEditor } from './editor/FloorEditor.tsx';
 import { Shell } from './Shell.tsx';
+import { TeamPage } from './pages/Team.tsx';
 import './styles.css';
 
 function useHash(): string[] {
@@ -22,7 +23,11 @@ function App() {
   let page = <OfficesPage />;
   if (a === 'office' && b && c === 'floor' && d) page = <FloorEditor key={d} officeId={b} floorId={d} />;
   else if (a === 'office' && b) page = <OfficePage key={b} officeId={b} />;
-  return <Shell>{page}</Shell>;
+  return (
+    <Shell page={a}>
+      {(me) => (a === 'team' && me?.workspace ? <TeamPage myId={me.id} /> : page)}
+    </Shell>
+  );
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);

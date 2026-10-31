@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from './api.ts';
 import { APP_VERSION } from '../shared/version.ts';
+import type { MeInfo } from '../shared/types.ts';
+import { NoAccess } from './pages/NoAccess.tsx';
 
 type Theme = 'auto' | 'light' | 'dark';
 const KEY = 'pb-theme';
@@ -20,12 +22,14 @@ const icon = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 );
 
-export function Shell({ children }: { children: ReactNode }) {
+export function Shell({ children, page }: { children: (me: MeInfo | null) => ReactNode; page?: string }) {
   const [theme, setTheme] = useState<Theme>(readTheme);
-  const [name, setName] = useState('');
+  const [me, setMe] = useState<MeInfo | null>(null);
+  const [meLoaded, setMeLoaded] = useState(false);
+  const name = me?.name ?? '';
   const [serverVersion, setServerVersion] = useState('');
   useEffect(() => { applyTheme(theme); }, [theme]);
-  useEffect(() => { api.me().then((m) => setName(m.name)).catch(() => undefined); }, []);
+  useEffect(() => { api.me().then(setMe).catch(() => undefined).finally(() => setMeLoaded(true)); }, []);
   useEffect(() => { api.config().then((c) => setServerVersion(c.version)).catch(() => undefined); }, []);
   const next: Theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
@@ -36,7 +40,10 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="logo">{icon('M4 21V8l8-5 8 5v13 M9 21v-6h6v6')}</span>
           Places Builder
         </a>
-        <a className="nav active" href="#/">{icon('M4 21V8l8-5 8 5v13 M9 21v-6h6v6')}Offices</a>
+        {!me?.blocked && <a className={page === 'team' ? 'nav' : 'nav active'} href="#/">{icon('M4 21V8l8-5 8 5v13 M9 21v-6h6v6')}Offices</a>}
+        {me?.edition === 'hosted' && me.workspace && (
+          <a className={page === 'team' ? 'nav active' : 'nav'} href="#/team">{icon('M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0z M4 21a8 8 0 0 1 16 0')}Team</a>
+        )}
         <div className="grow" />
         <button className="theme" onClick={() => setTheme(next)} title="Switch theme">Theme: {theme}</button>
         {name && (
@@ -52,7 +59,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <a href="https://github.com/ralpje/placesbuilder/issues/new/choose" target="_blank" rel="noreferrer">Report an issue</a>
         </div>
       </aside>
-      <main className="content">{children}</main>
+      <main className="content">{!meLoaded ? <p className="muted">Loading…</p> : me?.blocked ? <NoAccess code={me.blocked.code} message={me.blocked.message} /> : children(me)}</main>
     </div>
   );
 }

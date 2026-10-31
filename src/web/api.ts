@@ -1,4 +1,4 @@
-import type { FloorDoc, OfficeDoc, ValidationReport, Address, DeskExportMode } from '../shared/types.ts';
+import type { FloorDoc, OfficeDoc, ValidationReport, Address, DeskExportMode, MeInfo, WorkspaceInfo, InviteInfo } from '../shared/types.ts';
 
 export class ApiError extends Error {
   status: number;
@@ -36,7 +36,11 @@ export interface GeoHit { label: string; lon: number; lat: number }
 
 export const api = {
   config: () => call<{ basemap: 'azure' | 'osm' | 'none'; version: string }>('GET', 'config'),
-  me: () => call<{ id: string; name: string }>('GET', 'me'),
+  me: () => call<MeInfo>('GET', 'me'),
+  workspace: () => call<WorkspaceInfo>('GET', 'workspace'),
+  invite: (email: string) => call<InviteInfo>('POST', 'workspace/invites', jsonBody({ email }), JSON_H),
+  revokeInvite: (id: string) => call<{ ok: true }>('DELETE', `workspace/invites/${id}`),
+  removeMember: (oid: string) => call<{ ok: true }>('DELETE', `workspace/members/${oid}`),
   offices: () => call<OfficeSummary[]>('GET', 'offices'),
   createOffice: (name: string) => call<OfficeDoc>('POST', 'offices', jsonBody({ name }), JSON_H),
   office: (id: string) => call<OfficeDoc>('GET', `offices/${id}`),
