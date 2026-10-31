@@ -6,6 +6,9 @@ export interface User {
   name: string;
   roles: string[];
   groups: string[];
+  tenantId?: string;
+  issuer?: string;
+  claimTypes?: string[];
 }
 
 export type AuthResult =
@@ -14,6 +17,7 @@ export type AuthResult =
 
 const ROLE_TYPES = new Set(['roles', 'role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role']);
 const OID_TYPES = new Set(['oid', 'http://schemas.microsoft.com/identity/claims/objectidentifier']);
+const TID_TYPES = new Set(['tid', 'http://schemas.microsoft.com/identity/claims/tenantid']);
 
 /** Decodes the X-MS-CLIENT-PRINCIPAL header that App Service authentication (Easy Auth) adds to each request. */
 export function decodePrincipal(headers: IncomingHttpHeaders): User | null {
@@ -35,6 +39,9 @@ export function decodePrincipal(headers: IncomingHttpHeaders): User | null {
       name: (typeof nameHeader === 'string' && nameHeader) || all((t) => t === (p.name_typ ?? 'name'))[0] || id,
       roles: all((t) => ROLE_TYPES.has(t)),
       groups: all((t) => t === 'groups'),
+      tenantId: all((t) => TID_TYPES.has(t))[0],
+      issuer: all((t) => t === 'iss')[0],
+      claimTypes: [...new Set(claims.map((c) => c.typ))].sort(),
     };
   } catch {
     return null;
@@ -67,4 +74,30 @@ export function authenticate(headers: IncomingHttpHeaders, cfg: Config): AuthRes
     user.groups.some((g) => cfg.allowedGroups.includes(g)) ||
     user.roles.some((r) => cfg.allowedRoles.includes(r));
   return allowed ? { ok: true, user } : { ok: false, status: 403, message: 'Your account is not allowed to use this app.' };
+}
+
+/**
+ * Shows the caller what the app received from App Service authentication: tenant, issuer, claim names, and whether the
+ * access policy lets them in. Only the caller's own identity facts, never tokens. Handy to find out why someone is refused.
+ */
+export function whoami(headers: IncomingHttpHeaders, cfg: Config): { status: number; body: unknown } {
+  if (cfg.devAuth) return { status: 200, body: { userId: 'dev', name: 'Local developer', allowed: true } };
+  if (cfg.production && !cfg.easyAuthEnabled) return { status: 503, body: { error: 'App Service authentication is not enabled yet.' } };
+  const user = decodePrincipal(headers);
+  if (!user) return { status: 401, body: { error: 'Sign-in required.' } };
+  const result = authenticate(headers, cfg);
+  return {
+    status: 200,
+    body: {
+      userId: user.id,
+      name: user.name,
+      tenantId: user.tenantId ?? null,
+      issuer: user.issuer ?? null,
+      claimTypes: user.claimTypes ?? [],
+      groupCount: user.groups.length,
+      groupsOverage: (user.claimTypes ?? []).includes('_claim_names'),
+      allowed: result.ok,
+      reason: result.ok ? null : result.message,
+    },
+  };
 }
