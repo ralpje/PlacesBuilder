@@ -1,8 +1,17 @@
-# Open questions (verify in a test tenant)
-1. Desk representation: fixtures (`desk` icon) vs units (`workspace`/`desk`); switch per office. See IMDF_ASSUMPTIONS in src/shared/imdf.ts.
-2. Section feature properties and category values Places accepts.
+# What is verified and what is still open
+
+## Verified in a test tenant (2026-10-31)
+- An IMDF zip from this app with building, footprint, level and unit (plus address, venue and manifest), with the Places PlaceId in `properties.directory_id`, is accepted by `New-Map` directly. No `Import-MapCorrelations` is needed. Places reported: floors 2, rooms 2.
+- Rooms show on the map with the right position and orientation.
+- `Import-MapCorrelations` (first run) accepts our package. Its `mapfeatures.csv` has the columns `PlaceId, Name, Type, FeatureType, FeatureId, FeatureName, FeatureCategory`; the app exports the same format (`mapfeatures.csv`).
+- Microsoft's correlated output sets `directory_id` and normalises every file to a fixed property set (nulls where unused); the app writes the same shape.
+- A floor in a Places export can lack a SortOrder (`Features` is `{ }`). The import then warns and uses the number in the floor name.
+
+## Still open
+1. Desk representation: fixtures (`desk` icon) vs units (`workspace`/`desk`); switch per office. See IMDF_ASSUMPTIONS in src/shared/imdf.ts. Not tested: no sections, workspaces or desks were in the test import.
+2. Section and fixture: `directory_id` is assumed to work like for units, and the property set Microsoft writes for these files is unknown. Category values Places accepts for sections.
 3. Fixture `rotation` semantics (degrees, direction).
-4. Whether unit `building_ids` are required/accepted.
-5. Exact columns of Microsoft's `mapfeatures.csv` after Import-MapCorrelations (the app currently emits its own correlation-map.csv).
-6. Group claims in Easy Auth for the second access check (token size/overage with many groups).
-7. pdf.js v6 worker import and maplibre v5 image-source behaviour were not run here (no npm access): report build errors.
+4. Whether unit `building_ids` are required/accepted (it was accepted).
+5. Group claims in Easy Auth for the second access check (token size/overage with many groups).
+6. Whether the Microsoft-style capitalised file names or a missing manifest matter (our lowercase names with manifest were accepted).
+7. How Places SortOrder is set for floors that have none (probably `Set-PlaceV3 -SortOrder`, not checked).
