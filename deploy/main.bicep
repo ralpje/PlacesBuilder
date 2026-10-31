@@ -124,6 +124,7 @@ var baseSettings = {
   ALLOWED_GROUP_IDS: allowedGroupIds
   ALLOWED_USER_IDS: allowedUserIds
   ALLOW_ANY_AUTHENTICATED: allowAnyTenantUser ? '1' : '0'
+  ALLOWED_TENANT_IDS: tenant().tenantId // this kit is single-tenant: only users of your own tenant
 }
 var authSettings = hasAuth ? { MICROSOFT_PROVIDER_AUTHENTICATION_SECRET: entraClientSecret } : {}
 
