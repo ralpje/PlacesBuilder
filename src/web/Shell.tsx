@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from './api.ts';
+import { APP_VERSION } from '../shared/version.ts';
 
 type Theme = 'auto' | 'light' | 'dark';
 const KEY = 'pb-theme';
@@ -22,8 +23,10 @@ const icon = (d: string) => (
 export function Shell({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [name, setName] = useState('');
+  const [serverVersion, setServerVersion] = useState('');
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { api.me().then((m) => setName(m.name)).catch(() => undefined); }, []);
+  useEffect(() => { api.config().then((c) => setServerVersion(c.version)).catch(() => undefined); }, []);
   const next: Theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
   return (
@@ -42,6 +45,12 @@ export function Shell({ children }: { children: ReactNode }) {
             <span className="who">{name}</span>
           </div>
         )}
+        <div className="version">
+          Places Builder {APP_VERSION}
+          {serverVersion && serverVersion !== APP_VERSION && <> (server {serverVersion})</>}
+          <br />
+          <a href="https://github.com/ralpje/placesbuilder/issues/new/choose" target="_blank" rel="noreferrer">Report an issue</a>
+        </div>
       </aside>
       <main className="content">{children}</main>
     </div>

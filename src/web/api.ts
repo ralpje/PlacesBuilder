@@ -35,7 +35,7 @@ export interface ImportResult {
 export interface GeoHit { label: string; lon: number; lat: number }
 
 export const api = {
-  config: () => call<{ basemap: 'azure' | 'osm' | 'none' }>('GET', 'config'),
+  config: () => call<{ basemap: 'azure' | 'osm' | 'none'; version: string }>('GET', 'config'),
   me: () => call<{ id: string; name: string }>('GET', 'me'),
   offices: () => call<OfficeSummary[]>('GET', 'offices'),
   createOffice: (name: string) => call<OfficeDoc>('POST', 'offices', jsonBody({ name }), JSON_H),

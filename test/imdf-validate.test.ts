@@ -158,3 +158,8 @@ test('mapFeaturesCsv has the columns Microsoft expects', () => {
   assert.ok(rows.some((l) => l.startsWith('F8,8 - Marokko,Floor,Level,')));
   assert.ok(rows.some((l) => l.startsWith('R1,') && l.includes(',Unit,')));
 });
+
+test('APP_VERSION is "dev" unless the build stamps a version', async () => {
+  const { APP_VERSION } = await import('../src/shared/version.ts');
+  assert.equal(APP_VERSION, 'dev');
+});
