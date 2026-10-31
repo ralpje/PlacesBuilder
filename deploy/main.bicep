@@ -1,5 +1,5 @@
 // Places Builder: single-tenant self-host kit.
-// Deploys a Linux Web App (Node 22) that runs a released app package, Blob Storage (managed identity, no keys)
+// Deploys a Linux Web App (Node 24) that runs a released app package, Blob Storage (managed identity, no keys)
 // and an Azure Maps account for satellite imagery. Sign-in is added afterwards by scripts/configure-auth.ps1
 // (or by passing entraClientId and entraClientSecret).
 
@@ -103,7 +103,7 @@ resource site 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     clientAffinityEnabled: false
     siteConfig: {
-      linuxFxVersion: 'NODE|22-lts'
+      linuxFxVersion: 'NODE|24-lts'
       appCommandLine: 'node server/index.mjs'
       alwaysOn: true
       ftpsState: 'Disabled'
