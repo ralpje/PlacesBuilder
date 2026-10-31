@@ -128,6 +128,15 @@ export function OfficePage({ officeId }: { officeId: string }) {
         <a className="button primary" href={api.exportUrl(o.id)}>Download IMDF zip</a>
         <a className="button" href={api.correlationUrl(o.id)}>Download correlation CSV</a>
       </div>
+      <p className="muted">
+        The IMDF zip already contains the Places IDs, so Import-MapCorrelations is not needed. Upload it with Places PowerShell
+        (Exchange or Places administrator; one building per zip; an existing map must be removed first with Remove-Map):
+      </p>
+      <pre><code>{`New-Map -BuildingId ${o.placesBuildingId ?? o.places?.buildingPlaceId ?? '<building PlaceId>'} -FilePath "<path to the downloaded zip>"`}</code></pre>
+      <p className="muted">
+        If New-Map rejects the zip, use the long route: <a href={api.mapFeaturesUrl(o.id)}>download mapfeatures.csv</a> (already filled in) and run{' '}
+        <code>Import-MapCorrelations -MapFilePath &lt;zip&gt; -CorrelationsFilePath &lt;mapfeatures.csv&gt;</code>, then New-Map with the resulting imdf_correlated.zip.
+      </p>
       {report && (
         <>
           <p>{report.ok ? 'No errors.' : 'There are errors.'} Matched {report.stats.matched}; units {report.stats.units}, sections {report.stats.sections}, workspaces {report.stats.workspaces}, desks {report.stats.desks}.</p>

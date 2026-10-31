@@ -57,5 +57,6 @@ export const api = {
   validate: (o: string) => call<ValidationReport>('GET', `offices/${o}/validate`),
   exportUrl: (o: string, force = false) => `/api/offices/${o}/export.zip${force ? '?force=1' : ''}`,
   correlationUrl: (o: string) => `/api/offices/${o}/correlation.csv?force=1`,
+  mapFeaturesUrl: (o: string) => `/api/offices/${o}/mapfeatures.csv?force=1`,
   geocode: (q: string) => call<GeoHit[]>('GET', `geocode?q=${encodeURIComponent(q)}`),
 };
