@@ -43,6 +43,17 @@ export function OfficePage({ officeId }: { officeId: string }) {
     if (!confirm(`Delete "${o.name}" with all floors and plans?`)) return;
     try { await api.deleteOffice(o.id); location.hash = '#/'; } catch (e) { fail(e); }
   };
+  const setOrdinal = async (floorId: string, value: number) => {
+    const cur = o.floors.find((f) => f.id === floorId);
+    if (!cur || value === cur.ordinal) return;
+    setErr(''); setMsg('');
+    try {
+      const doc = await api.floor(o.id, floorId);
+      await api.saveFloor(o.id, floorId, { rev: doc.rev, ordinal: value });
+      setO(await api.office(o.id));
+      setMsg('Ordinal saved. It must equal the Places SortOrder; the next import of the export resets it to that value.');
+    } catch (e) { fail(e); }
+  };
   const check = () => api.validate(o.id).then(setReport).catch(fail);
 
   return (
@@ -94,7 +105,14 @@ export function OfficePage({ officeId }: { officeId: string }) {
         <tbody>
           {o.floors.map((f) => (
             <tr key={f.id}>
-              <td>{f.ordinal}</td>
+              <td>
+                <input
+                  type="number" min={-50} max={300} step={1} style={{ width: 80 }} defaultValue={f.ordinal}
+                  aria-label={`Ordinal of ${f.name}`}
+                  onBlur={(e) => setOrdinal(f.id, Number(e.target.value))}
+                />
+                {o.floors.some((x) => x.id !== f.id && x.ordinal === f.ordinal) && <span className="error"> duplicate</span>}
+              </td>
               <td><a href={`#/office/${o.id}/floor/${f.id}`}>{f.name}</a></td>
               <td>{f.placesFloorId ? 'linked' : 'not linked'}</td>
             </tr>

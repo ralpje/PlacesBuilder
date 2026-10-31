@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { FEATURE_KINDS } from '../shared/types.ts';
 import type { Address, FeatureKind, FloorDoc, FloorIndexEntry, GeoRef, OfficeDoc, PlanFeature, Pt } from '../shared/types.ts';
-import { parsePlacesCsv } from '../shared/places.ts';
+import { ordinalFromName, parsePlacesCsv } from '../shared/places.ts';
 import { normalizeDeg } from '../shared/georef.ts';
 import { PreconditionError } from './storage.ts';
 import type { Storage } from './storage.ts';
@@ -276,7 +276,7 @@ export class Repo {
           id: randomUUID(),
           officeId: id,
           name: pf.name,
-          ordinal: pf.sortOrder ?? 0,
+          ordinal: pf.sortOrder ?? ordinalFromName(pf.name) ?? 0,
           placesFloorId: pf.placeId,
           features: [],
           rev: 1,

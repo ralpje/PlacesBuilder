@@ -54,7 +54,7 @@ export function parsePlacesCsv(text: string, now: string = new Date().toISOStrin
     if (type.toLowerCase() === 'floor') {
       const so = readSortOrder(get(r, idx.features));
       if (so !== undefined) item.sortOrder = so;
-      else warnings.push(`Floor "${item.name}" has no SortOrder in the export.`);
+      else warnings.push(`Floor "${item.name}" has no SortOrder in the export. Set one in Places (it must be unique per floor) and export again; until then the number in the floor name is used, if it has one.`);
     }
     if (type.toLowerCase() === 'building') {
       buildings.push(placeId);
@@ -63,6 +63,15 @@ export function parsePlacesCsv(text: string, now: string = new Date().toISOStrin
     items.push(item);
   }
   if (items.length === 0) throw new Error('No rows with a PlaceId were found.');
+  const bySort = new Map<number, string[]>();
+  for (const i of items) {
+    if (i.type.toLowerCase() === 'floor' && i.sortOrder !== undefined) bySort.set(i.sortOrder, [...(bySort.get(i.sortOrder) ?? []), i.name]);
+  }
+  for (const [so, names] of bySort) {
+    if (names.length > 1) {
+      warnings.push(`Floors ${names.map((n) => `"${n}"`).join(', ')} all have SortOrder ${so} in the export. Give each floor its own SortOrder in Places and export again, because the IMDF level ordinal must equal it.`);
+    }
+  }
   if (buildings.length > 1) {
     warnings.push(`The export contains ${buildings.length} buildings. Export one building at a time; the first one is used.`);
   }
@@ -124,4 +133,10 @@ export function descendantsOfFloor(places: PlacesImport, floorPlaceId: string): 
     }
   }
   return out;
+}
+
+/** Best guess for a floor ordinal when Places gives none: the leading whole number in the name ("5", "8 - Marokko"). */
+export function ordinalFromName(name: string): number | undefined {
+  const m = /^\s*(-?\d{1,3})(?!\d)/.exec(name);
+  return m ? parseInt(m[1]!, 10) : undefined;
 }

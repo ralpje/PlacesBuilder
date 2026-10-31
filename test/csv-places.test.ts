@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { detectDelimiter, parseCsv, toCsv } from '../src/shared/csv.ts';
-import { descendantsOfFloor, parsePlacesCsv } from '../src/shared/places.ts';
+import { descendantsOfFloor, ordinalFromName, parsePlacesCsv } from '../src/shared/places.ts';
 
 test('parseCsv handles quotes, doubled quotes, newlines and BOM', () => {
   const rows = parseCsv('﻿a,b,c\r\n"x, y","say ""hi""","line1\nline2"\r\n');
@@ -66,4 +66,25 @@ test('real Places export parses (skipped when the file is not present)', { skip:
   assert.equal(r.address?.city, 'Hoofddorp');
   assert.equal(r.places.items.find((i) => i.name === '8 - Marokko')?.sortOrder, 8);
   assert.ok(!JSON.stringify(r).includes('@transavia.com'));
+});
+
+test('parsePlacesCsv warns about duplicate and missing floor SortOrder', () => {
+  const csv = [
+    'PlaceId,DisplayName,Type,Identity,PostalCode,CountryOrRegion,State,City,Street,ParentId,Features,Capacity,BookInPolicy',
+    'B1,Test,Building,x,,NL,,City,Street 1,,"{ }",,',
+    'F5,5,Floor,x,,,,,,B1,"{ ""SortOrder"": ""0"" }",,',
+    'F1,1,Floor,x,,,,,,B1,"{ ""SortOrder"": ""0"" }",,',
+    'F2,2,Floor,x,,,,,,B1,"{ }",,',
+  ].join('\r\n');
+  const r = parsePlacesCsv(csv, 'NOW');
+  assert.ok(r.warnings.some((w) => /"5", "1" all have SortOrder 0/.test(w)));
+  assert.ok(r.warnings.some((w) => /Floor "2" has no SortOrder/.test(w)));
+});
+
+test('ordinalFromName reads a leading whole number', () => {
+  assert.equal(ordinalFromName('5'), 5);
+  assert.equal(ordinalFromName('8 - Marokko'), 8);
+  assert.equal(ordinalFromName('-1 Parking'), -1);
+  assert.equal(ordinalFromName('Ground floor'), undefined);
+  assert.equal(ordinalFromName('2024 Annex'), undefined);
 });
