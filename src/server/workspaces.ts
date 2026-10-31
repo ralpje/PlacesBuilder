@@ -4,6 +4,7 @@ import type { Config } from './config.ts';
 import { HttpError, Repo } from './repo.ts';
 import { PreconditionError } from './storage.ts';
 import type { PutOptions, Storage, Stored } from './storage.ts';
+import type { InviteInfo, MemberInfo, WorkspaceInfo } from '../shared/types.ts';
 
 /**
  * A workspace is the unit of data separation. In the self-host edition there is one shared workspace.
@@ -26,9 +27,7 @@ export interface Workspaces {
   resolve(user: User): Promise<Resolved>;
 }
 
-export interface MemberInfo { oid: string; name: string; email: string; role: 'owner' | 'member'; joinedAt: string }
-export interface InviteInfo { id: string; email: string; createdAt: string }
-export interface WorkspaceInfo { role: 'owner' | 'member'; members: MemberInfo[]; invites: InviteInfo[]; limit: number }
+export type { InviteInfo, MemberInfo, WorkspaceInfo };
 
 export interface WorkspaceAdmin {
   info(): Promise<WorkspaceInfo>;

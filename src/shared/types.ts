@@ -137,3 +137,14 @@ export const UNIT_CATEGORIES = [
   'nonpublic',
   'unspecified',
 ] as const;
+
+export interface MemberInfo { oid: string; name: string; email: string; role: 'owner' | 'member'; joinedAt: string }
+export interface InviteInfo { id: string; email: string; createdAt: string }
+export interface WorkspaceInfo { role: 'owner' | 'member'; members: MemberInfo[]; invites: InviteInfo[]; limit: number }
+export interface MeInfo {
+  id: string;
+  name: string;
+  edition: 'selfhost' | 'hosted';
+  workspace: { id: string; role: 'owner' | 'member'; canManageMembers: boolean } | null;
+  blocked: { code: string; message: string } | null;
+}
