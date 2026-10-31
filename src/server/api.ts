@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Config } from './config.ts';
+import { APP_VERSION } from '../shared/version.ts';
 import type { User } from './auth.ts';
 import { HttpError, Repo } from './repo.ts';
 import { fetchTile, geocode } from './maps.ts';
@@ -53,7 +54,7 @@ export function createApi(cfg: Config, repo: Repo) {
     const [a, b, c, d, e] = parts;
 
     if (a === 'me' && method === 'GET') return json(200, { id: user.id, name: user.name });
-    if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap });
+    if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION });
 
     if (a === 'tiles' && method === 'GET') {
       const t = await fetchTile(cfg, b ?? '', c ?? '', (d ?? '').replace(/\.\w+$/, ''));
