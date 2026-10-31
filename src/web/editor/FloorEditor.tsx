@@ -72,12 +72,14 @@ export function FloorEditor({ officeId, floorId }: { officeId: string; floorId: 
       <div className="bar">
         <a href={`#/office/${office!.id}`}>← {office!.name}</a>
         <strong>{ctx.floor.name}</strong>
-        {tab('plan', '1. Plan')}
-        {tab('align', '2. Position on map', !ctx.floor.plan)}
-        {tab('trace', '3. Trace and match', !ctx.floor.plan || !ctx.floor.georef)}
+        <div className="steps">
+          {tab('plan', '1. Plan')}
+          {tab('align', '2. Position on map', !ctx.floor.plan)}
+          {tab('trace', '3. Trace and match', !ctx.floor.plan || !ctx.floor.georef)}
+        </div>
         <span className="spacer" />
         {dirty && <span className="warn">Unsaved changes</span>}
-        <button onClick={save} disabled={!dirty}>Save</button>
+        <button className="primary" onClick={save} disabled={!dirty}>Save</button>
       </div>
       {err && <p className="error">{err}</p>}
       {msg && !dirty && <p className="ok">{msg}</p>}

@@ -122,7 +122,7 @@ export function PlanPrep({ ctx, onDone }: { ctx: EditorCtx; onDone: () => void }
             onPointerMove={(e) => { if (drag.current) { const p = pos(e); setCrop({ x0: drag.current.x, y0: drag.current.y, x1: p.x, y1: p.y }); } }}
             onPointerUp={() => { drag.current = null; }}
           />
-          <div className="row"><button disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Use this plan'}</button></div>
+          <div className="row"><button className="primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Use this plan'}</button></div>
         </>
       )}
     </div>

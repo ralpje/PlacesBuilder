@@ -47,12 +47,17 @@ export function OfficePage({ officeId }: { officeId: string }) {
 
   return (
     <section>
-      <p><a href="#/">← Offices</a></p>
-      <h1>{o.name}</h1>
+      <div className="page-head">
+        <div>
+          <p><a href="#/">← Offices</a></p>
+          <h1>{o.name}</h1>
+        </div>
+      </div>
       {err && <p className="error">{err}</p>}
       {msg && <p className="ok">{msg}</p>}
 
-      <h2>Details</h2>
+      <div className="card">
+      <h2 style={{ marginTop: 0 }}>Details</h2>
       <div className="grid">
         <label>Name<input value={o.name} onChange={(e) => set({ name: e.target.value })} /></label>
         <label>Street<input value={addr.street} onChange={(e) => setAddr('street', e.target.value)} /></label>
@@ -67,9 +72,11 @@ export function OfficePage({ officeId }: { officeId: string }) {
           </select>
         </label>
       </div>
-      <div className="row"><button onClick={save}>Save details</button><button className="danger" onClick={remove}>Delete office</button></div>
+      <div className="row"><button className="primary" onClick={save}>Save details</button><button className="danger" onClick={remove}>Delete office</button></div>
+      </div>
 
-      <h2>Places export</h2>
+      <div className="card" style={{ marginTop: 24 }}>
+      <h2 style={{ marginTop: 0 }}>Places export</h2>
       <p>Export with <code>Get-PlaceV3 -AncestorId &lt;building id&gt; | Export-Csv places.csv</code> and upload it. Only names, types, parents, capacity and floor order are kept.</p>
       <p>{o.places ? `Imported ${o.places.items.length} items on ${new Date(o.places.importedAt).toLocaleString()}.` : 'Nothing imported yet.'}</p>
       <input type="file" accept=".csv,text/csv" onChange={(e) => upload(e.target.files?.[0])} />
@@ -79,6 +86,7 @@ export function OfficePage({ officeId }: { officeId: string }) {
           {imp.warnings.map((w) => <span key={w} className="warn"> {w}</span>)}
         </p>
       )}
+      </div>
 
       <h2>Floors</h2>
       <table>
@@ -95,10 +103,11 @@ export function OfficePage({ officeId }: { officeId: string }) {
       </table>
       <div className="row"><button onClick={addFloor}>Add floor</button></div>
 
-      <h2>Export</h2>
+      <div className="card" style={{ marginTop: 24 }}>
+      <h2 style={{ marginTop: 0 }}>Export</h2>
       <div className="row">
         <button onClick={check}>Check project</button>
-        <a className="button" href={api.exportUrl(o.id)}>Download IMDF zip</a>
+        <a className="button primary" href={api.exportUrl(o.id)}>Download IMDF zip</a>
         <a className="button" href={api.correlationUrl(o.id)}>Download correlation CSV</a>
       </div>
       {report && (
@@ -109,6 +118,7 @@ export function OfficePage({ officeId }: { officeId: string }) {
           </ul>
         </>
       )}
+      </div>
     </section>
   );
 }
