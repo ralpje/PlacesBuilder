@@ -114,6 +114,7 @@ export interface CorrelationRow {
   placesId: string;
   placesName: string;
   placesType: string;
+  category?: string; // IMDF category of the feature, used in mapfeatures.csv
 }
 
 export const FEATURE_KINDS: FeatureKind[] = ['outline', 'unit', 'section', 'workspace', 'desk'];

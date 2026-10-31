@@ -89,7 +89,31 @@ const feature = (id: string, featureType: string, geometry: Geometry, properties
   properties,
 });
 
-const collection = (features: Feature[]) => JSON.stringify({ type: 'FeatureCollection', features }, null, 2);
+/**
+ * Microsoft's Import-MapCorrelations rewrites every file so that all of these properties exist (null when unused).
+ * Taken from a package it produced; we write the same shape so New-Map sees what it expects.
+ * `directory_id` is the Places PlaceId and is the actual correlation.
+ */
+const MS_DEFAULTS: Record<string, string[]> = {
+  address: ['address_id', 'alt_name', 'building_ids', 'custom_category', 'directory_id', 'display_point', 'level_id', 'name', 'ordinal', 'restriction', 'smtp_address', 'unit_id'],
+  building: ['building_ids', 'custom_category', 'directory_id', 'level_id', 'ordinal', 'smtp_address', 'unit_id'],
+  footprint: ['address_id', 'alt_name', 'custom_category', 'directory_id', 'display_point', 'level_id', 'ordinal', 'restriction', 'smtp_address', 'unit_id'],
+  level: ['alt_name', 'custom_category', 'directory_id', 'level_id', 'smtp_address', 'unit_id'],
+  unit: ['address_id', 'custom_category', 'directory_id', 'ordinal', 'smtp_address', 'unit_id'],
+  venue: ['building_ids', 'custom_category', 'directory_id', 'level_id', 'ordinal', 'smtp_address', 'unit_id'],
+  section: ['directory_id'], // not seen in a Microsoft-produced package yet
+  fixture: ['directory_id'], // not seen in a Microsoft-produced package yet
+};
+
+const collection = (features: Feature[]) => {
+  const full = features.map((f) => {
+    const defaults: Record<string, unknown> = {};
+    for (const k of MS_DEFAULTS[f.feature_type] ?? []) defaults[k] = null;
+    if (f.feature_type === 'address') defaults.category = '';
+    return { ...f, properties: { ...defaults, ...f.properties } };
+  });
+  return JSON.stringify({ type: 'FeatureCollection', features: full }, null, 2);
+};
 
 export function includedFloors(floors: FloorDoc[]): FloorDoc[] {
   return floors
@@ -145,6 +169,7 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
       placesId: buildingPlaceId,
       placesName: b?.name ?? '',
       placesType: b?.type ?? 'Building',
+      category: 'unspecified',
     });
   }
 
@@ -197,6 +222,7 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
     restriction: null,
     display_point: footprintPoint,
     address_id: ids.address,
+    directory_id: buildingPlaceId ?? null,
   });
   const footprintFeature = feature(ids.footprint, 'footprint', footprintGeom, {
     category: A.footprintCategory,
@@ -226,6 +252,7 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
         ordinal: f.ordinal,
         name: names(f.name),
         short_name: names(String(f.ordinal)),
+        directory_id: f.placesFloorId ?? null,
         display_point: geoPoint(g, w, h, pointOnSurface(outline.points)),
         address_id: ids.address,
         building_ids: [ids.building],
@@ -241,10 +268,11 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
         placesId: f.placesFloorId,
         placesName: it?.name ?? '',
         placesType: it?.type ?? 'Floor',
+        category: 'unspecified',
       });
     }
 
-    const link = (x: PlanFeature, fid: string, file: string) => {
+    const link = (x: PlanFeature, fid: string, file: string, category?: string) => {
       if (!x.placesId) return undefined;
       const it = items.get(x.placesId);
       correlation.push({
@@ -255,6 +283,7 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
         placesId: x.placesId,
         placesName: it?.name ?? '',
         placesType: it?.type ?? '',
+        category: category ?? 'unspecified',
       });
       return it;
     };
@@ -277,6 +306,7 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
             accessibility: null,
             name: names(displayName(x)),
             alt_name: null,
+            directory_id: x.placesId ?? null,
             ...base(x),
           }),
         );
@@ -288,6 +318,7 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
             name: names(displayName(x)),
             alt_name: null,
             anchor_id: null,
+            directory_id: x.placesId ?? null,
             rotation: Math.round(normalizeDeg((x.rotationDeg ?? 0) + g.rotationDeg) * 10) / 10,
             ...base(x),
           }),
@@ -303,11 +334,12 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
             accessibility: null,
             name: names(displayName(x)),
             alt_name: null,
+            directory_id: x.placesId ?? null,
             ...base(x),
             ...(A.unitsCarryBuildingIds ? { building_ids: [ids.building] } : {}),
           }),
         );
-        link(x, x.id, 'unit.geojson');
+        link(x, x.id, 'unit.geojson', category);
       }
     }
   }
@@ -336,5 +368,15 @@ export function correlationCsv(rows: CorrelationRow[]): string {
   return toCsv([
     ['FeatureId', 'File', 'Floor', 'Name', 'PlaceId', 'PlaceName', 'PlaceType'],
     ...rows.map((r) => [r.featureId, r.file, r.floor, r.name, r.placesId, r.placesName, r.placesType]),
+  ]);
+}
+
+/** The file Microsoft's Import-MapCorrelations produces for manual correlation, already filled in. */
+export function mapFeaturesCsv(rows: CorrelationRow[]): string {
+  const type = (file: string) =>
+    ({ 'building.geojson': 'Building', 'level.geojson': 'Level', 'unit.geojson': 'Unit', 'section.geojson': 'Section', 'fixture.geojson': 'Fixture' })[file] ?? file;
+  return toCsv([
+    ['PlaceId', 'Name', 'Type', 'FeatureType', 'FeatureId', 'FeatureName', 'FeatureCategory'],
+    ...rows.map((r) => [r.placesId, r.placesName, r.placesType, type(r.file), r.featureId, r.name, r.category ?? 'unspecified']),
   ]);
 }

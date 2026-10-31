@@ -4,7 +4,7 @@ import type { User } from './auth.ts';
 import { HttpError, Repo } from './repo.ts';
 import { fetchTile, geocode } from './maps.ts';
 import { createZip } from './zip.ts';
-import { buildImdf, correlationCsv } from '../shared/imdf.ts';
+import { buildImdf, correlationCsv, mapFeaturesCsv } from '../shared/imdf.ts';
 import { validateProject } from '../shared/validate.ts';
 
 export interface Reply {
@@ -101,7 +101,7 @@ export function createApi(cfg: Config, repo: Repo) {
       const office = await repo.getOffice(officeId);
       return json(200, validateProject(office, await repo.getFloors(office)));
     }
-    if ((c === 'export.zip' || c === 'correlation.csv') && method === 'GET') {
+    if ((c === 'export.zip' || c === 'correlation.csv' || c === 'mapfeatures.csv') && method === 'GET') {
       const office = await repo.getOffice(officeId);
       const floors = await repo.getFloors(office);
       const report = validateProject(office, floors);
@@ -115,6 +115,9 @@ export function createApi(cfg: Config, repo: Repo) {
         throw new HttpError(422, (err as Error).message);
       }
       audit(`export ${officeId}`);
+      if (c === 'mapfeatures.csv') {
+        return { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${safeName(office.name)}-mapfeatures.csv"` }, body: mapFeaturesCsv(res.correlation) };
+      }
       if (c === 'correlation.csv') {
         return { status: 200, headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${safeName(office.name)}-correlation.csv"` }, body: correlationCsv(res.correlation) };
       }

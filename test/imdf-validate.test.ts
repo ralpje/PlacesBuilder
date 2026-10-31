@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildImdf, correlationCsv } from '../src/shared/imdf.ts';
+import { buildImdf, correlationCsv, mapFeaturesCsv } from '../src/shared/imdf.ts';
 import { validateProject } from '../src/shared/validate.ts';
 import { signedArea } from '../src/shared/geometry.ts';
 import { parseCsv } from '../src/shared/csv.ts';
@@ -137,4 +137,24 @@ test('validation warns about workspaces outside sections and features outside th
   const w = validateProject(makeOffice(), [f]).problems.filter((p) => p.level === 'warning').map((p) => p.message).join('\n');
   assert.match(w, /not inside a section/);
   assert.match(w, /outside the floor outline/);
+});
+
+test('Places IDs are written as directory_id, like Microsoft Import-MapCorrelations does', () => {
+  const r = buildImdf(makeOffice(), [makeFloor()], { now: NOW });
+  const props = (file: string) => (JSON.parse(r.files[file]!) as { features: { id: string; properties: Record<string, unknown> }[] }).features.map((f) => f.properties);
+  assert.equal(props('building.geojson')[0]!.directory_id, 'B');
+  assert.equal(props('level.geojson')[0]!.directory_id, 'F8');
+  const units = props('unit.geojson');
+  assert.ok(units.some((p) => p.directory_id === 'R1'));
+  assert.ok(units.every((p) => 'smtp_address' in p && 'unit_id' in p && 'custom_category' in p));
+  assert.equal(props('footprint.geojson')[0]!.directory_id, null);
+  assert.equal(props('address.geojson')[0]!.category, '');
+});
+
+test('mapFeaturesCsv has the columns Microsoft expects', () => {
+  const r = buildImdf(makeOffice(), [makeFloor()], { now: NOW });
+  const rows = mapFeaturesCsv(r.correlation).trim().split(/\r?\n/);
+  assert.equal(rows[0], 'PlaceId,Name,Type,FeatureType,FeatureId,FeatureName,FeatureCategory');
+  assert.ok(rows.some((l) => l.startsWith('F8,8 - Marokko,Floor,Level,')));
+  assert.ok(rows.some((l) => l.startsWith('R1,') && l.includes(',Unit,')));
 });
