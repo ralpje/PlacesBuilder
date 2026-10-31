@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { loadConfig } from './config.ts';
-import { authenticate } from './auth.ts';
+import { authenticate, whoami } from './auth.ts';
 import { createStorage } from './storage.ts';
 import { Repo } from './repo.ts';
 import { createApi, errorReply, sendReply } from './api.ts';
@@ -55,6 +55,12 @@ const server = createServer(async (req, res) => {
     if (url.pathname === '/healthz') {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('ok');
+      return;
+    }
+    if (url.pathname === '/whoami') {
+      const w = whoami(req.headers, cfg);
+      res.writeHead(w.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(w.body, null, 2));
       return;
     }
     const auth = authenticate(req.headers, cfg);
