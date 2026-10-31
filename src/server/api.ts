@@ -2,7 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Config } from './config.ts';
 import { APP_VERSION } from '../shared/version.ts';
 import type { User } from './auth.ts';
-import { HttpError, Repo } from './repo.ts';
+import { HttpError } from './repo.ts';
+import type { Workspaces } from './workspaces.ts';
 import { fetchTile, geocode } from './maps.ts';
 import { createZip } from './zip.ts';
 import { buildImdf, correlationCsv, mapFeaturesCsv } from '../shared/imdf.ts';
@@ -44,7 +45,7 @@ async function readJson(req: IncomingMessage, limit = 2_000_000): Promise<Record
 
 const safeName = (s: string) => s.replace(/[^\w.-]+/g, '_').slice(0, 60) || 'office';
 
-export function createApi(cfg: Config, repo: Repo) {
+export function createApi(cfg: Config, workspaces: Workspaces) {
   return async function handle(req: IncomingMessage, url: URL, user: User): Promise<Reply> {
     const method = req.method ?? 'GET';
     const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
@@ -53,8 +54,44 @@ export function createApi(cfg: Config, repo: Repo) {
     const audit = (what: string) => console.log(JSON.stringify({ t: new Date().toISOString(), user: user.id, what }));
     const [a, b, c, d, e] = parts;
 
-    if (a === 'me' && method === 'GET') return json(200, { id: user.id, name: user.name });
     if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION });
+
+    const resolved = await workspaces.resolve(user);
+    if (a === 'me' && method === 'GET') {
+      return json(200, {
+        id: user.id,
+        name: user.name,
+        edition: cfg.edition,
+        workspace: resolved.ok ? { id: resolved.workspace.id, role: resolved.workspace.role, canManageMembers: !!resolved.workspace.admin } : null,
+        blocked: resolved.ok ? null : { code: resolved.code, message: resolved.message },
+      });
+    }
+    if (!resolved.ok) throw new HttpError(403, resolved.message, { code: resolved.code });
+    const { workspace } = resolved;
+    const repo = workspace.repo;
+
+    if (a === 'workspace') {
+      const admin = workspace.admin;
+      if (!admin) throw new HttpError(404, 'Not found');
+      if (!b && method === 'GET') return json(200, await admin.info());
+      if (b === 'invites' && !c && method === 'POST') {
+        const body = await readJson(req, 10_000);
+        const inv = await admin.invite(typeof body.email === 'string' ? body.email : '', user);
+        audit(`invite ${inv.id}`);
+        return json(201, inv);
+      }
+      if (b === 'invites' && c && method === 'DELETE') {
+        await admin.revokeInvite(c);
+        audit(`invite.revoke ${c}`);
+        return json(200, { ok: true });
+      }
+      if (b === 'members' && c && method === 'DELETE') {
+        await admin.removeMember(c, user);
+        audit(`member.remove ${c}`);
+        return json(200, { ok: true });
+      }
+      throw new HttpError(404, 'Not found');
+    }
 
     if (a === 'tiles' && method === 'GET') {
       const t = await fetchTile(cfg, b ?? '', c ?? '', (d ?? '').replace(/\.\w+$/, ''));

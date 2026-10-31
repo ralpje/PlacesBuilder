@@ -8,6 +8,7 @@ export interface User {
   groups: string[];
   tenantId?: string;
   issuer?: string;
+  email?: string;
   claimTypes?: string[];
 }
 
@@ -19,6 +20,7 @@ const ROLE_TYPES = new Set(['roles', 'role', 'http://schemas.microsoft.com/ws/20
 const OID_TYPES = new Set(['oid', 'http://schemas.microsoft.com/identity/claims/objectidentifier']);
 /** The tenant behind personal Microsoft accounts (Outlook, Hotmail). Only work or school accounts are supported. */
 export const CONSUMER_TENANT_ID = '9188040d-6c67-4c5b-b112-36a304b66dad';
+const EMAIL_TYPE = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress';
 const TID_TYPES = new Set(['tid', 'http://schemas.microsoft.com/identity/claims/tenantid']);
 
 /** Decodes the X-MS-CLIENT-PRINCIPAL header that App Service authentication (Easy Auth) adds to each request. */
@@ -44,6 +46,7 @@ export function decodePrincipal(headers: IncomingHttpHeaders): User | null {
       groups: all((t) => t === 'groups'),
       tenantId: all((t) => TID_TYPES.has(t))[0],
       issuer: all((t) => t === 'iss')[0],
+      email: (all((t) => t === 'preferred_username' || t === EMAIL_TYPE)[0] ?? '').toLowerCase() || undefined,
       claimTypes: [...new Set(claims.map((c) => c.typ))].sort(),
     };
   } catch {
