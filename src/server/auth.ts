@@ -17,6 +17,8 @@ export type AuthResult =
 
 const ROLE_TYPES = new Set(['roles', 'role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role']);
 const OID_TYPES = new Set(['oid', 'http://schemas.microsoft.com/identity/claims/objectidentifier']);
+/** The tenant behind personal Microsoft accounts (Outlook, Hotmail). Only work or school accounts are supported. */
+export const CONSUMER_TENANT_ID = '9188040d-6c67-4c5b-b112-36a304b66dad';
 const TID_TYPES = new Set(['tid', 'http://schemas.microsoft.com/identity/claims/tenantid']);
 
 /** Decodes the X-MS-CLIENT-PRINCIPAL header that App Service authentication (Easy Auth) adds to each request. */
@@ -32,7 +34,8 @@ export function decodePrincipal(headers: IncomingHttpHeaders): User | null {
     const all = (pred: (t: string) => boolean) => claims.filter((c) => pred(c.typ)).map((c) => c.val);
     const idHeader = headers['x-ms-client-principal-id'];
     const nameHeader = headers['x-ms-client-principal-name'];
-    const id = (typeof idHeader === 'string' && idHeader) || all((t) => OID_TYPES.has(t))[0] || '';
+    // The oid claim is the user's object id in the tenant. The header id is only a fallback.
+    const id = all((t) => OID_TYPES.has(t))[0] || (typeof idHeader === 'string' && idHeader) || '';
     if (!id) return null;
     return {
       id,
@@ -49,6 +52,23 @@ export function decodePrincipal(headers: IncomingHttpHeaders): User | null {
 }
 
 /**
+ * Tenant rules that hold whatever the access policy says. Returns a message when the user must be refused.
+ * The platform has already checked the token signature; this makes sure tenant and issuer belong together.
+ */
+export function checkTenant(user: User, cfg: Config): string | null {
+  const tid = user.tenantId?.toLowerCase();
+  if (!tid) return 'Your sign-in did not include a tenant. Sign in with a work or school account.';
+  if (tid === CONSUMER_TENANT_ID) return 'Personal Microsoft accounts are not supported. Sign in with a work or school account.';
+  if (user.issuer) {
+    const iss = user.issuer.toLowerCase();
+    const ok = iss === `https://login.microsoftonline.com/${tid}/v2.0` || iss === `https://sts.windows.net/${tid}/`;
+    if (!ok) return 'Your sign-in came from an unexpected issuer.';
+  }
+  if (cfg.allowedTenants.length > 0 && !cfg.allowedTenants.includes(tid)) return 'Your organization is not allowed to use this app.';
+  return null;
+}
+
+/**
  * Second line of defence behind the Entra "Assignment required" setting.
  * Fails closed: with no policy configured nobody gets in, unless ALLOW_ANY_AUTHENTICATED=1.
  */
@@ -62,6 +82,9 @@ export function authenticate(headers: IncomingHttpHeaders, cfg: Config): AuthRes
 
   const user = decodePrincipal(headers);
   if (!user) return { ok: false, status: 401, message: 'Sign-in required.' };
+
+  const tenantProblem = checkTenant(user, cfg);
+  if (tenantProblem) return { ok: false, status: 403, message: tenantProblem };
 
   const hasPolicy = cfg.allowedGroups.length + cfg.allowedRoles.length + cfg.allowedUsers.length > 0;
   if (!hasPolicy) {
