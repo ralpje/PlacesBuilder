@@ -8,13 +8,13 @@ You need an Azure subscription, permission to create resources (Contributor on a
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fgithub.com%2Fralpje%2Fplacesbuilder%2Freleases%2Flatest%2Fdownload%2Fazuredeploy.json)
 
-Choose or create a resource group and pick a globally unique **Site name**. Leave the sign-in fields empty for now. Deployment takes a few minutes.
+Choose or create a resource group and pick a globally unique **Site name**. Write both down: the next steps use them as `<your-resource-group>` and `<your-unique-name>`. Replace everything between `<` and `>` with your own value. Leave the sign-in fields empty for now. Deployment takes a few minutes.
 
 Prefer the command line?
 
 ```powershell
-az group create -n rg-placesbuilder -l westeurope
-az deployment group create -g rg-placesbuilder `
+az group create -n <your-resource-group> -l <region, for example westeurope>
+az deployment group create -g <your-resource-group> `
   --template-uri https://github.com/ralpje/placesbuilder/releases/latest/download/azuredeploy.json `
   --parameters siteName=<your-unique-name>
 ```
@@ -23,7 +23,7 @@ az deployment group create -g rg-placesbuilder `
 
 ```powershell
 Invoke-WebRequest https://github.com/ralpje/placesbuilder/releases/latest/download/configure-auth.ps1 -OutFile configure-auth.ps1
-./configure-auth.ps1 -ResourceGroup rg-placesbuilder -SiteName <your-unique-name> -AllowedGroupId <optional group object id>
+./configure-auth.ps1 -ResourceGroup <your-resource-group> -SiteName <your-unique-name> -AllowedGroupId <optional group object id>
 ```
 
 The script creates the app registration, requires assignment, turns on App Service authentication and prints a link. You can run it again safely.
@@ -39,7 +39,7 @@ Open `https://<your-unique-name>.azurewebsites.net`.
 Each release on GitHub has a version such as `v0.2.0`. To move to it, point the app at that package:
 
 ```powershell
-az webapp config appsettings set -g rg-placesbuilder -n <your-unique-name> `
+az webapp config appsettings set -g <your-resource-group> -n <your-unique-name> `
   --settings WEBSITE_RUN_FROM_PACKAGE=https://github.com/ralpje/placesbuilder/releases/download/v0.2.0/placesbuilder-v0.2.0.zip
 ```
 
