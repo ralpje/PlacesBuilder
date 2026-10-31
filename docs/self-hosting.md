@@ -51,3 +51,13 @@ You pay Azure for the App Service plan (B1 by default), the storage account and 
 ## Status
 
 This kit is new and has not been tested by many people yet. Please report problems as an issue.
+
+## Using the maps in Microsoft Places
+
+After exporting from Places Builder, upload the zip with Places PowerShell (Exchange or Places administrator; one building per zip):
+
+```powershell
+New-Map -BuildingId <building PlaceId> -FilePath "<path to the downloaded zip>"
+```
+
+The Places IDs are already inside the zip. A map can take up to an hour to appear. To replace a map, run `Remove-Map -BuildingId <building PlaceId>` first. Every floor must have a unique SortOrder in Places that equals the floor ordinal in Places Builder.
