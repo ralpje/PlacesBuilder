@@ -74,3 +74,10 @@ test('a sign-in without a tenant claim is refused', () => {
   const r = authenticate(principal(CLAIMS.filter((c) => c.typ !== TID)), open());
   assert.equal(r.ok, false);
 });
+
+test('hosted edition ignores the group/role/user policy (membership decides)', () => {
+  const hosted = { ...cfg(), edition: 'hosted', allowedGroups: ['g1'] } as Config;
+  assert.equal(authenticate(principal(CLAIMS), hosted).ok, true);
+  const selfhost = { ...cfg(), edition: 'selfhost', allowedGroups: ['g1'] } as Config;
+  assert.equal(authenticate(principal(CLAIMS), selfhost).ok, false);
+});

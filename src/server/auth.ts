@@ -89,6 +89,9 @@ export function authenticate(headers: IncomingHttpHeaders, cfg: Config): AuthRes
   const tenantProblem = checkTenant(user, cfg);
   if (tenantProblem) return { ok: false, status: 403, message: tenantProblem };
 
+  // Hosted edition: the organization (tenant owner and invitations) decides who is in, not a group list.
+  if (cfg.edition === 'hosted') return { ok: true, user };
+
   const hasPolicy = cfg.allowedGroups.length + cfg.allowedRoles.length + cfg.allowedUsers.length > 0;
   if (!hasPolicy) {
     return cfg.allowAnyAuthenticated
