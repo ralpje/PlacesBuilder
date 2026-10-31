@@ -47,7 +47,7 @@ export function validateProject(office: OfficeDoc, allFloors: FloorDoc[]): Valid
     if (Math.abs(g.lat) > 85 || Math.abs(g.lon) > 180) add('error', `Floor "${f.name}": the map position is not a valid coordinate.`, f.id);
     if (!Number.isInteger(f.ordinal)) add('error', `Floor "${f.name}": the ordinal must be a whole number.`, f.id);
     const clash = ordinals.get(f.ordinal);
-    if (clash) add('error', `Floors "${clash}" and "${f.name}" use the same ordinal ${f.ordinal}.`, f.id);
+    if (clash) add('error', `Floors "${clash}" and "${f.name}" use the same ordinal ${f.ordinal}. Every floor needs its own number, equal to its Places SortOrder: fix the SortOrder in Places and import the export again, or change the ordinal in the floor list on the office page.`, f.id);
     ordinals.set(f.ordinal, f.name);
 
     if (!f.placesFloorId) {
