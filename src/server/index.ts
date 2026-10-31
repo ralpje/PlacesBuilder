@@ -4,12 +4,12 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { loadConfig } from './config.ts';
 import { authenticate, whoami } from './auth.ts';
 import { createStorage } from './storage.ts';
-import { Repo } from './repo.ts';
+import { createWorkspaces } from './workspaces.ts';
 import { createApi, errorReply, sendReply } from './api.ts';
 
 const cfg = loadConfig();
-const repo = new Repo(await createStorage(cfg));
-const api = createApi(cfg, repo);
+const workspaces = createWorkspaces(cfg, await createStorage(cfg));
+const api = createApi(cfg, workspaces);
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
