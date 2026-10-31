@@ -32,7 +32,7 @@ npm run build && npm start
 | `ALLOWED_GROUP_IDS`, `ALLOWED_ROLES`, `ALLOWED_USER_IDS`, `ALLOW_ANY_AUTHENTICATED` | Access check on top of App Service authentication. |
 | `DEV_AUTH` | Local development only. The server refuses to start with it in production. |
 
-A ready-to-use Azure deployment kit is planned.
+Want to run it yourself in Azure? See [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Feedback
 
