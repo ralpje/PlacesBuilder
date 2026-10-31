@@ -14,11 +14,21 @@ $ErrorActionPreference = 'Stop'
 # az is a native command: PowerShell does not stop on its errors, so check each call.
 function Invoke-Az {
   $out = & az @args
-  if ($LASTEXITCODE -ne 0) { throw "az $($args -join ' ') failed (exit code $LASTEXITCODE)." }
+  if ($LASTEXITCODE -ne 0) {
+    # never print the secret that may be part of the arguments
+    $shown = for ($i = 0; $i -lt $args.Count; $i++) { if ($i -gt 0 -and $args[$i - 1] -eq '--client-secret') { '***' } else { $args[$i] } }
+    throw "az $($shown -join ' ') failed (exit code $LASTEXITCODE)."
+  }
   return $out
 }
 
 try { Invoke-Az config set extension.use_dynamic_install=yes_without_prompt | Out-Null } catch { }
+
+# Check the target first, so nothing is created in Entra when the names are wrong.
+$rg = & az group show -n $ResourceGroup --query name -o tsv 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $rg) { throw "Resource group '$ResourceGroup' was not found in the current subscription. Find it with: az webapp list --query ""[?name=='$SiteName'].resourceGroup"" -o tsv" }
+$site = & az webapp show -g $ResourceGroup -n $SiteName --query name -o tsv 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $site) { throw "Web app '$SiteName' was not found in resource group '$ResourceGroup'." }
 $tenant = Invoke-Az account show --query tenantId -o tsv
 $redirect = "https://$SiteName.azurewebsites.net/.auth/login/aad/callback"
 $name = "Places Builder ($SiteName)"
@@ -29,6 +39,8 @@ if (-not $appId) {
 }
 $sp = Invoke-Az ad sp list --filter "appId eq '$appId'" --query "[0].id" -o tsv
 if (-not $sp) { $sp = Invoke-Az ad sp create --id $appId --query id -o tsv }
+# Without this tag the portal hides the service principal from Enterprise applications.
+Invoke-Az ad sp update --id $sp --set "tags=['WindowsAzureActiveDirectoryIntegratedApp']" | Out-Null
 Invoke-Az ad app update --id $appId --set groupMembershipClaims=SecurityGroup | Out-Null
 Invoke-Az ad sp update --id $sp --set appRoleAssignmentRequired=true | Out-Null   # only assigned users and groups can sign in
 $secret = Invoke-Az ad app credential reset --id $appId --display-name "app-service" --years 2 --query password -o tsv
@@ -56,4 +68,5 @@ if ($AllowedGroupId) {
   Invoke-Az webapp config appsettings set -g $ResourceGroup -n $SiteName --settings ALLOW_ANY_AUTHENTICATED=1 | Out-Null
 }
 Write-Host "Done. Client ID: $appId"
-Write-Host "Assign users or groups: Entra > Enterprise applications > $name. Then open https://$SiteName.azurewebsites.net"
+Write-Host "Assign users or groups: https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ManagedAppMenuBlade/~/Users/objectId/$sp/appId/$appId"
+Write-Host "(or Entra > Enterprise applications > $name). Then open https://$SiteName.azurewebsites.net"

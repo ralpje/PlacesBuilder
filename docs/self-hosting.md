@@ -6,7 +6,7 @@ You need an Azure subscription, permission to create resources (Contributor on a
 
 ## 1. Deploy the resources
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fgithub.com%2Fralpje%2Fplacesbuilder%2Freleases%2Flatest%2Fdownload%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fralpje%2Fplacesbuilder%2Fdeploy-template%2Fazuredeploy.json)
 
 Choose or create a resource group and pick a globally unique **Site name**. Write both down: the next steps use them as `<your-resource-group>` and `<your-unique-name>`. Replace everything between `<` and `>` with your own value. Leave the sign-in fields empty for now. Deployment takes a few minutes.
 
@@ -16,7 +16,6 @@ Prefer the command line?
 az group create -n <your-resource-group> -l <region, for example westeurope>
 az deployment group create -g <your-resource-group> `
   --template-uri https://github.com/ralpje/placesbuilder/releases/latest/download/azuredeploy.json `
-  --parameters siteName=<your-unique-name>
 ```
 
 ## 2. Set up sign-in
