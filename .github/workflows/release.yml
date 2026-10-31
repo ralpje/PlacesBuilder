@@ -34,3 +34,13 @@ jobs:
             gh release create "$GITHUB_REF_NAME" placesbuilder-*.zip azuredeploy.json configure-auth.ps1 SHA256SUMS \
               --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
           fi
+      - name: Publish template for the Deploy to Azure button
+        # The portal fetches the template in the browser. GitHub release downloads have no CORS headers,
+        # raw.githubusercontent.com does, so the compiled template also goes to a dedicated branch.
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          mkdir "$RUNNER_TEMP/tpl" && cp azuredeploy.json "$RUNNER_TEMP/tpl/"
+          cd "$RUNNER_TEMP/tpl"
+          git init -q -b deploy-template && git add .
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Template for $GITHUB_REF_NAME"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" deploy-template
