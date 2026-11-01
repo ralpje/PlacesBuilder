@@ -8,7 +8,7 @@ Create offices with multiple floors, import the room list exported from Microsof
 
 ## Run locally
 
-Requires Node 20 or newer.
+Requires Node 22 or newer (releases are built and run on Node 24).
 
 ```
 npm install
@@ -35,6 +35,8 @@ npm run build && npm start
 | `DEV_AUTH` | Local development only. The server refuses to start with it in production. |
 
 Want to run it yourself in Azure? See [docs/self-hosting.md](docs/self-hosting.md).
+
+How it works: [docs/architecture.md](docs/architecture.md). How releases and version tags work: [docs/releasing.md](docs/releasing.md).
 
 ## Feedback
 
