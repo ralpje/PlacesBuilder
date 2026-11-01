@@ -22,6 +22,7 @@ export function Align({ ctx }: { ctx: EditorCtx }) {
   const [hits, setHits] = useState<GeoHit[]>([]);
   const [err, setErr] = useState('');
   const [basemap, setBasemap] = useState<'azure' | 'osm' | 'none'>('osm');
+  const [tilesLimited, setTilesLimited] = useState(false);
   const [others, setOthers] = useState<{ id: string; name: string; g: GeoRef }[]>([]);
 
   function initial(): GeoRef {
@@ -59,6 +60,7 @@ export function Align({ ctx }: { ctx: EditorCtx }) {
       const start = gRef.current;
       const map = new maplibregl.Map({ container: el.current, style, center: [start.lon, start.lat], zoom: floor.georef ? 19 : 17, maxZoom: 21 });
       mapRef.current = map;
+      map.on('error', (ev) => { if ((ev as unknown as { error?: { status?: number } }).error?.status === 429) setTilesLimited(true); });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
       map.on('load', () => {
         map.addSource('plan', { type: 'image', url: api.planUrl(office.id, floor.id, plan.version), coordinates: cornersLonLat(start, w, h) as [LonLat, LonLat, LonLat, LonLat] });
@@ -121,6 +123,7 @@ export function Align({ ctx }: { ctx: EditorCtx }) {
         <h3>Position the plan</h3>
         <p>Find the building, then drag the red dot to move the plan, the blue dot to rotate it and the green dot to resize it. Lower the opacity to see the aerial image through the drawing.</p>
         {basemap === 'osm' && <p className="warn">Using OpenStreetMap (development). Configure Azure Maps for satellite images.</p>}
+        {tilesLimited && <p className="warn">The map image limit has been reached for now, so parts of the map stay blank. Try again later.</p>}
         {basemap === 'none' && <p className="warn">No basemap is configured, so you can only place the plan by numbers.</p>}
         <div className="row"><input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} /><button onClick={search}>Find</button></div>
         {hits.map((hit) => <div key={hit.label + hit.lat}><a href="#" onClick={(e) => { e.preventDefault(); goto(hit); }}>{hit.label}</a></div>)}

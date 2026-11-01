@@ -49,7 +49,7 @@ Identity is the Entra object id (`oid` claim), never the e-mail address or UPN. 
 
 ## Limits
 
-Four optional limits protect storage and cost. All are off by default and are set with app settings (see the configuration table in the README):
+Optional limits protect storage and cost. All are off by default and are set with app settings (see the configuration table in the README):
 
 | Setting | Limit |
 | --- | --- |
@@ -59,6 +59,17 @@ Four optional limits protect storage and cost. All are off by default and are se
 | `MAX_STORAGE_MB` | Total size of all stored files of the workspace |
 
 The repository layer enforces them, so every route is covered: creating an office or floor, and uploading a plan image or an original. A request over a limit is refused with HTTP 403 (count and storage) or 413 (file size) and a message that names the limit. Replacing a file does not count twice. The storage total is read from the storage listing when a file is uploaded, so two uploads at the very same moment can pass the check together and exceed the limit slightly; the next upload is refused. `/api/config` returns the active limits.
+
+### Request limits
+
+Two more optional settings limit how fast one signed-in user can call the server, which keeps the cost of the map service under control:
+
+| Setting | Limit |
+| --- | --- |
+| `RATE_LIMIT_PER_MINUTE` | API requests per user per minute (map tiles are not counted here; `/api/config` is never limited) |
+| `TILE_LIMIT_PER_HOUR` | Map tile requests per user per hour |
+
+Both are off by default. A request over a limit gets HTTP 429 with a `Retry-After` header (seconds) and a JSON message. The counters are fixed windows kept in memory per server process, so they reset on a restart and are not shared between several instances; with N instances a user can reach roughly N times the limit. Users are told apart by tenant and object ID when available, never by e-mail. The map in the editor shows a notice when tiles are refused.
 
 ## Credentials and secrets (self-host kit)
 

@@ -32,6 +32,7 @@ npm run build && npm start
 | `ALLOWED_GROUP_IDS`, `ALLOWED_ROLES`, `ALLOWED_USER_IDS`, `ALLOW_ANY_AUTHENTICATED` | Access check on top of App Service authentication. |
 | `ALLOWED_TENANT_IDS` | Only users of these Entra tenants are let in (the template sets your own tenant). Personal Microsoft accounts are always refused. |
 | `MAX_OFFICES`, `MAX_FLOORS_PER_OFFICE`, `MAX_UPLOAD_MB`, `MAX_STORAGE_MB` | Optional limits: offices per workspace, floors per office, size of one uploaded file, total storage of the workspace (all in whole numbers; megabytes are 1024 x 1024 bytes). Empty or `0` means no limit, which is the default. |
+| `RATE_LIMIT_PER_MINUTE`, `TILE_LIMIT_PER_HOUR` | Optional request limits per signed-in user: API requests per minute (map tiles excluded) and map tiles per hour. Over the limit, the server answers HTTP 429 with a `Retry-After` header. Whole numbers; empty or `0` means no limit, which is the default. Counters are kept in memory per server process. |
 | `DEV_AUTH` | Local development only. The server refuses to start with it in production. |
 
 Want to run it yourself in Azure? See [docs/self-hosting.md](docs/self-hosting.md).

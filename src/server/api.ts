@@ -6,6 +6,7 @@ import type { User } from './auth.ts';
 import { HttpError } from './repo.ts';
 import type { Workspaces } from './workspaces.ts';
 import { fetchTile, geocode } from './maps.ts';
+import { RateLimiter } from './rateLimit.ts';
 import { createZip } from './zip.ts';
 import { buildImdf, correlationCsv, mapFeaturesCsv } from '../shared/imdf.ts';
 import { validateProject } from '../shared/validate.ts';
@@ -46,7 +47,16 @@ async function readJson(req: IncomingMessage, limit = 2_000_000): Promise<Record
 
 const safeName = (s: string) => s.replace(/[^\w.-]+/g, '_').slice(0, 60) || 'office';
 
+const tooMany = (wait: number, what: string): Reply => ({
+  status: 429,
+  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Retry-After': String(wait) },
+  body: JSON.stringify({ error: `Too many ${what}. Try again in ${wait} seconds.`, code: 'rate_limit', retryAfter: wait }),
+});
+
 export function createApi(cfg: Config, workspaces: Workspaces) {
+  const lim = cfg.limits ?? NO_LIMITS;
+  const requestLimiter = new RateLimiter(lim.requestsPerMinute, 60_000);
+  const tileLimiter = new RateLimiter(lim.tilesPerHour, 3_600_000);
   return async function handle(req: IncomingMessage, url: URL, user: User): Promise<Reply> {
     const method = req.method ?? 'GET';
     const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
@@ -54,6 +64,11 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
     if (mutating && req.headers['x-requested-with'] !== 'imdf-app') throw new HttpError(403, 'Missing X-Requested-With header.');
     const audit = (what: string) => console.log(JSON.stringify({ t: new Date().toISOString(), user: user.id, what }));
     const [a, b, c, d, e] = parts;
+    if (a !== 'config') {
+      const key = user.tenantId ? `${user.tenantId}/${user.id}` : user.id;
+      const wait = a === 'tiles' ? tileLimiter.hit(key) : requestLimiter.hit(key);
+      if (wait) return tooMany(wait, a === 'tiles' ? 'map tile requests' : 'requests');
+    }
     const limits = cfg.limits ?? NO_LIMITS;
     // The built-in ceiling for a file, lowered by the optional limit.
     const uploadMax = (hard: number) => (limits.maxUploadBytes ? Math.min(hard, limits.maxUploadBytes) : hard);

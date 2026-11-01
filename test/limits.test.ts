@@ -103,3 +103,50 @@ test('the request body is cut off at the limit with a clear message', async () =
   const req = Readable.from([Buffer.alloc(2 * 1024 * 1024)]) as unknown as IncomingMessage;
   await assert.rejects(readBody(req, 1024 * 1024, 'This plan image'), (e: unknown) => e instanceof HttpError && e.status === 413 && /larger than the limit of 1 MB/.test(e.message));
 });
+
+test('rate limits are read from the environment', () => {
+  const l = loadConfig({ RATE_LIMIT_PER_MINUTE: '120', TILE_LIMIT_PER_HOUR: '2000' }).limits;
+  assert.equal(l.requestsPerMinute, 120);
+  assert.equal(l.tilesPerHour, 2000);
+  assert.equal(loadConfig({}).limits.requestsPerMinute, 0);
+  assert.throws(() => loadConfig({ RATE_LIMIT_PER_MINUTE: 'x' }));
+});
+
+test('RateLimiter allows up to the maximum per window, then tells how long to wait', async () => {
+  const { RateLimiter } = await import('../src/server/rateLimit.ts');
+  let t = 1_000;
+  const rl = new RateLimiter(2, 60_000, () => t);
+  assert.equal(rl.hit('a'), 0);
+  assert.equal(rl.hit('a'), 0);
+  assert.equal(rl.hit('a'), 60);
+  assert.equal(rl.hit('b'), 0, 'another user has their own budget');
+  t += 59_000;
+  assert.equal(rl.hit('a'), 1);
+  t += 1_000;
+  assert.equal(rl.hit('a'), 0, 'a new window starts');
+  const off = new RateLimiter(0, 60_000, () => t);
+  for (let i = 0; i < 1000; i++) assert.equal(off.hit('a'), 0);
+});
+
+test('the API answers 429 with Retry-After per user; tiles have their own budget; off by default', async () => {
+  const { createApi } = await import('../src/server/api.ts');
+  const run = async (over: Partial<Limits>, user: string, path: string) => {
+    const api = createApi({ limits: limits(over), basemap: 'none', edition: 'selfhost' } as never, { resolve: async () => ({ ok: false, code: 'x', message: 'x' }) } as never);
+    return api;
+  };
+  const api = await run({ requestsPerMinute: 2, tilesPerHour: 1 }, 'u', '');
+  const req = { method: 'GET', headers: {} } as IncomingMessage;
+  const call = (path: string, id: string) => api(req, new URL('http://x' + path), { id, name: id, roles: [], groups: [] });
+  assert.equal((await call('/api/me', 'u1')).status, 200);
+  assert.equal((await call('/api/me', 'u1')).status, 200);
+  const blocked = await call('/api/me', 'u1');
+  assert.equal(blocked.status, 429);
+  assert.ok(Number(blocked.headers?.['Retry-After']) >= 1);
+  assert.equal((await call('/api/me', 'u2')).status, 200, 'other user unaffected');
+  assert.equal((await call('/api/config', 'u1')).status, 200, 'config is never limited');
+  await assert.rejects(call('/api/tiles/1/1/1.png', 'u1'), HttpError); // passes the limiter (no basemap configured, so the tile itself fails)
+  assert.equal((await call('/api/tiles/1/1/1.png', 'u1')).status, 429, 'second tile exceeds 1 per hour');
+
+  const open = createApi({ limits: NO_LIMITS, basemap: 'none', edition: 'selfhost' } as never, { resolve: async () => ({ ok: false, code: 'x', message: 'x' }) } as never);
+  for (let i = 0; i < 300; i++) assert.equal((await open(req, new URL('http://x/api/me'), { id: 'u', name: 'u', roles: [], groups: [] })).status, 200);
+});
