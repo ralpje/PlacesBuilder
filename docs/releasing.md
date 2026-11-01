@@ -17,9 +17,9 @@ Pushing a tag (`git tag v0.2.2 && git push origin v0.2.2`; maintainers only) sta
 
 Normal pull requests never publish anything. The rule is: no direct commits to `main`; changes go through a pull request with passing CI (tests, typecheck, build, Bicep compile and lint) and a signed CLA.
 
-## How each edition picks up a release
+## Updating a self-hosted site
 
-**Self-host.** A release is not pushed to anyone. An administrator moves their site to it by changing one setting (see [self-hosting.md](self-hosting.md#updating)):
+A release is not pushed to anyone. An administrator moves their site to a release by changing one setting (see [self-hosting.md](self-hosting.md#updating)):
 
 ```powershell
 az webapp config appsettings set -g <rg> -n <site> `
@@ -28,14 +28,11 @@ az webapp config appsettings set -g <rg> -n <site> `
 
 The app restarts on that package. Going back is the same command with the old tag. Data lives in the storage account and is not touched. A new deployment from the template uses the `appVersion` that was stamped into it; the "latest" template links always point at the newest release.
 
-**Hosted edition (separate private repository).** The hosted service pins a release tag in a file (`CORE_VERSION`) and runs exactly that package. A scheduled job there opens a pull request when a newer release exists; merging it starts the hosted pipeline: verify the release (checksum, and this repository's tests at that tag, including tenant isolation), deploy to staging, then production by a manual run. Rolling back is a manual run with an earlier tag. Nothing in this repository knows about the hosted pipeline; the only contract is the release assets above and the `EDITION=hosted` behaviour of the app.
-
-So one change flows like this:
+The flow of one change:
 
 ```
 pull request -> CI -> merge to main -> tag vX.Y.Z -> Release workflow -> GitHub release (zip, template, checksums)
-                                                                  |-> self-host: administrators change WEBSITE_RUN_FROM_PACKAGE when they choose
-                                                                  |-> hosted: bump PR in the private repo -> staging -> production
+                                                                      -> administrators change WEBSITE_RUN_FROM_PACKAGE when they choose
 ```
 
 ## Dependencies
