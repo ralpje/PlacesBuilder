@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { User } from './auth.ts';
-import type { Config } from './config.ts';
+import { NO_LIMITS } from './config.ts';
+import type { Config, Limits } from './config.ts';
 import { HttpError, Repo } from './repo.ts';
 import { PreconditionError } from './storage.ts';
 import type { PutOptions, Storage, Stored } from './storage.ts';
@@ -53,13 +54,16 @@ export class PrefixedStorage implements Storage {
   async list(prefix: string): Promise<string[]> {
     return (await this.inner.list(this.prefix + prefix)).map((k) => k.slice(this.prefix.length));
   }
+  async listWithSize(prefix: string): Promise<{ key: string; size: number }[]> {
+    return (await this.inner.listWithSize(this.prefix + prefix)).map((e) => ({ key: e.key.slice(this.prefix.length), size: e.size }));
+  }
 }
 
 /** Self-host edition: one shared workspace, data where it has always been. No migration needed. */
 export class SingleWorkspace implements Workspaces {
   private ws: Workspace;
-  constructor(storage: Storage) {
-    this.ws = { id: 'default', role: 'owner', repo: new Repo(storage) };
+  constructor(storage: Storage, limits: Limits = NO_LIMITS) {
+    this.ws = { id: 'default', role: 'owner', repo: new Repo(storage, limits) };
   }
   async resolve(): Promise<Resolved> {
     return { ok: true, workspace: this.ws };
@@ -115,14 +119,16 @@ export class TenantWorkspaces implements Workspaces {
   private repos = new Map<string, Repo>();
   // Positive results only, for a short time, so that the map (many tile requests) does not read storage every time.
   private cache = new Map<string, { ws: Workspace; until: number }>();
-  constructor(storage: Storage) {
+  private limits: Limits;
+  constructor(storage: Storage, limits: Limits = NO_LIMITS) {
     this.storage = storage;
+    this.limits = limits;
   }
 
   private repoFor(tid: string): Repo {
     let r = this.repos.get(tid);
     if (!r) {
-      r = new Repo(new PrefixedStorage(this.storage, K.data(tid)));
+      r = new Repo(new PrefixedStorage(this.storage, K.data(tid)), this.limits);
       this.repos.set(tid, r);
     }
     return r;
@@ -232,5 +238,6 @@ export class TenantWorkspaces implements Workspaces {
 }
 
 export function createWorkspaces(cfg: Config, storage: Storage): Workspaces {
-  return cfg.edition === 'hosted' ? new TenantWorkspaces(storage) : new SingleWorkspace(storage);
+  const limits = cfg.limits ?? NO_LIMITS;
+  return cfg.edition === 'hosted' ? new TenantWorkspaces(storage, limits) : new SingleWorkspace(storage, limits);
 }

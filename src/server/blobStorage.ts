@@ -67,4 +67,10 @@ export class BlobStorage implements Storage {
     for await (const b of this.container.listBlobsFlat({ prefix })) out.push(b.name);
     return out.sort();
   }
+
+  async listWithSize(prefix: string): Promise<{ key: string; size: number }[]> {
+    const out: { key: string; size: number }[] = [];
+    for await (const b of this.container.listBlobsFlat({ prefix })) out.push({ key: b.name, size: b.properties.contentLength ?? 0 });
+    return out;
+  }
 }

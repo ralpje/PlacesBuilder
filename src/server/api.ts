@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { NO_LIMITS } from './config.ts';
 import type { Config } from './config.ts';
 import { APP_VERSION } from '../shared/version.ts';
 import type { User } from './auth.ts';
@@ -21,12 +22,12 @@ const json = (status: number, data: unknown): Reply => ({
   body: JSON.stringify(data),
 });
 
-export async function readBody(req: IncomingMessage, limit: number): Promise<Buffer> {
+export async function readBody(req: IncomingMessage, limit: number, what = 'The upload'): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const c of req) {
     size += (c as Buffer).length;
-    if (size > limit) throw new HttpError(413, 'The upload is too large.');
+    if (size > limit) throw new HttpError(413, `${what} is larger than the limit of ${Math.round((limit / (1024 * 1024)) * 10) / 10} MB.`, { code: 'quota', limit: 'upload' });
     chunks.push(c as Buffer);
   }
   return Buffer.concat(chunks);
@@ -53,8 +54,11 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
     if (mutating && req.headers['x-requested-with'] !== 'imdf-app') throw new HttpError(403, 'Missing X-Requested-With header.');
     const audit = (what: string) => console.log(JSON.stringify({ t: new Date().toISOString(), user: user.id, what }));
     const [a, b, c, d, e] = parts;
+    const limits = cfg.limits ?? NO_LIMITS;
+    // The built-in ceiling for a file, lowered by the optional limit.
+    const uploadMax = (hard: number) => (limits.maxUploadBytes ? Math.min(hard, limits.maxUploadBytes) : hard);
 
-    if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION });
+    if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION, limits });
 
     const resolved = await workspaces.resolve(user);
     if (a === 'me' && method === 'GET') {
@@ -199,7 +203,7 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
         if (method === 'PUT') {
           const q = url.searchParams;
           const mpp = Number(q.get('mpp'));
-          const f = await repo.putPlan(officeId, floorId, await readBody(req, 25_000_000), {
+          const f = await repo.putPlan(officeId, floorId, await readBody(req, uploadMax(25_000_000), 'This plan image'), {
             width: Number(q.get('w')),
             height: Number(q.get('h')),
             ...(mpp > 0 ? { metersPerPixel: mpp } : {}),
@@ -215,7 +219,7 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
           return { status: 200, headers: { 'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment' }, body: o };
         }
         if (method === 'PUT') {
-          const f = await repo.putOriginal(officeId, floorId, await readBody(req, 40_000_000), url.searchParams.get('name') ?? 'plan');
+          const f = await repo.putOriginal(officeId, floorId, await readBody(req, uploadMax(40_000_000), 'This file'), url.searchParams.get('name') ?? 'plan');
           return json(200, f);
         }
       }
