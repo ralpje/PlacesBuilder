@@ -7,9 +7,11 @@ export interface Limits {
   maxFloorsPerOffice: number;
   maxUploadBytes: number; // per uploaded file
   maxStorageBytes: number; // per workspace, all offices together
+  requestsPerMinute: number; // per user, all API calls except map tiles
+  tilesPerHour: number; // per user, map tiles
 }
 
-export const NO_LIMITS: Limits = { maxOffices: 0, maxFloorsPerOffice: 0, maxUploadBytes: 0, maxStorageBytes: 0 };
+export const NO_LIMITS: Limits = { maxOffices: 0, maxFloorsPerOffice: 0, maxUploadBytes: 0, maxStorageBytes: 0, requestsPerMinute: 0, tilesPerHour: 0 };
 const MB = 1024 * 1024;
 
 function limit(env: NodeJS.ProcessEnv, name: string, unit = 1): number {
@@ -83,6 +85,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       maxFloorsPerOffice: limit(env, 'MAX_FLOORS_PER_OFFICE'),
       maxUploadBytes: limit(env, 'MAX_UPLOAD_MB', MB),
       maxStorageBytes: limit(env, 'MAX_STORAGE_MB', MB),
+      requestsPerMinute: limit(env, 'RATE_LIMIT_PER_MINUTE'),
+      tilesPerHour: limit(env, 'TILE_LIMIT_PER_HOUR'),
     },
     easyAuthEnabled: env.WEBSITE_AUTH_ENABLED === 'True',
   };
