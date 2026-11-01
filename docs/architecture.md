@@ -1,0 +1,59 @@
+# Architecture
+
+How Places Builder is put together, where data lives and which credentials exist. For the release process see [releasing.md](releasing.md); for the self-host setup see [self-hosting.md](self-hosting.md).
+
+## Overview
+
+```
+Browser (React + MapLibre + pdf.js)
+   |  HTTPS
+   v
+Azure App Service (Linux, Node 24)  --- App Service authentication ("Easy Auth", Entra ID)
+   |   runs one Node process: static web app + JSON API (node:http, no framework)
+   |
+   |-- Azure Blob Storage   (managed identity, container "imdf")   all offices, floors, plans, members
+   |-- Azure Maps           (managed identity, Data Reader)        satellite tiles
+```
+
+One package (`placesbuilder-<tag>.zip`, built from `dist/server` and `dist/web`) is the whole product. App Service runs it straight from the zip (`WEBSITE_RUN_FROM_PACKAGE` = URL of the release asset), so a release is "installed" by pointing the setting at another version.
+
+## Code layout
+
+| Path | What it holds |
+| --- | --- |
+| `src/shared` | Logic that runs in browser and server and is covered by tests: IMDF generation and validation (`imdf.ts`, `validate.ts`), Places CSV import (`csv.ts`, `places.ts`), geometry, georeferencing, matching rooms to Places items, shared types, the version stamp (`version.ts`). |
+| `src/server` | HTTP server (`index.ts`), API routes (`api.ts`), authentication (`auth.ts`), configuration (`config.ts`), the repository over storage (`repo.ts`, `storage.ts`, `blobStorage.ts`), Azure Maps token proxy (`maps.ts`). |
+| `src/web` | React app: shell, offices and the office editor. |
+| `deploy/main.bicep` | The self-host template (Deploy to Azure button). |
+| `scripts/` | `configure-auth.ps1` (self-host sign-in), build scripts. |
+
+## Request flow
+
+1. The browser calls the site. App Service authentication signs the user in with Entra ID and passes the identity to the app in the `X-MS-CLIENT-PRINCIPAL` header (the app is never reachable without it in production; `/healthz` is the only excluded path).
+2. `auth.ts` decodes the principal: user id = `oid` claim, tenant = `tid` claim, issuer must belong to that tenant, personal Microsoft accounts are refused. The access policy then applies: `ALLOWED_TENANT_IDS`, and the optional group, user and role lists.
+3. The API routes work on one repository that sits on the storage layer. Everyone who is let in works in the same workspace.
+4. The repository reads and writes JSON and image blobs through a storage interface. Locally that is the `.data/` folder; in Azure it is Blob Storage with the web app's managed identity. No storage keys exist (`allowSharedKeyAccess: false`).
+
+## Data
+
+Everyone who is let in shares one workspace. Blob layout in the container `imdf`:
+
+```
+offices/<officeId>/office.json
+offices/<officeId>/floors/<floorId>/floor.json
+offices/<officeId>/floors/<floorId>/plan.png          rendered plan
+offices/<officeId>/floors/<floorId>/original.bin      the uploaded file
+```
+
+Identity is the Entra object id (`oid` claim), never the e-mail address or UPN. Soft delete and versioning on the container allow recovery of deleted or overwritten items.
+
+## Credentials and secrets (self-host kit)
+
+| What | Where it lives | Notes |
+| --- | --- | --- |
+| Storage access | Web app system-assigned managed identity, role *Storage Blob Data Contributor* | No keys, no connection strings |
+| Azure Maps access | Same identity, role *Azure Maps Data Reader* | Maps account has local auth disabled |
+| Entra client secret (sign-in) | App setting `MICROSOFT_PROVIDER_AUTHENTICATION_SECRET` | Written by `configure-auth.ps1`; valid 2 years; rerun the script to rotate |
+| Package location | App setting `WEBSITE_RUN_FROM_PACKAGE` | A public URL, no credential |
+
+The script never prints the secret. Nothing secret is part of the repository or the release.

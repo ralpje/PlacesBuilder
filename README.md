@@ -8,7 +8,7 @@ Create offices with multiple floors, import the room list exported from Microsof
 
 ## Run locally
 
-Requires Node 20 or newer.
+Requires Node 22 or newer (releases are built and run on Node 24).
 
 ```
 npm install
@@ -30,11 +30,12 @@ npm run build && npm start
 | `STORAGE_ACCOUNT_URL`, `STORAGE_CONTAINER` | Azure Blob Storage (managed identity). Without it, data is kept in `.data/`. |
 | `AZURE_MAPS_CLIENT_ID` / `AZURE_MAPS_KEY`, `BASEMAP` | Satellite basemap (`azure`, `osm` for development only, or `none`). |
 | `ALLOWED_GROUP_IDS`, `ALLOWED_ROLES`, `ALLOWED_USER_IDS`, `ALLOW_ANY_AUTHENTICATED` | Access check on top of App Service authentication. |
-| `EDITION` | `selfhost` (default): one shared workspace for everyone who is let in. `hosted`: one workspace per Entra tenant; the first user of a tenant owns it and invites the others. |
-| `ALLOWED_TENANT_IDS` | Only users of these Entra tenants are let in (the self-host template sets your own tenant). Personal Microsoft accounts are always refused. |
+| `ALLOWED_TENANT_IDS` | Only users of these Entra tenants are let in (the template sets your own tenant). Personal Microsoft accounts are always refused. |
 | `DEV_AUTH` | Local development only. The server refuses to start with it in production. |
 
 Want to run it yourself in Azure? See [docs/self-hosting.md](docs/self-hosting.md).
+
+How it works: [docs/architecture.md](docs/architecture.md). How releases and version tags work: [docs/releasing.md](docs/releasing.md).
 
 ## Feedback
 
