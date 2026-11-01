@@ -35,11 +35,11 @@ Open `https://<your-unique-name>.azurewebsites.net`.
 
 ## Updating
 
-Each release on GitHub has a version such as `v0.2.0`; the running version is shown at the bottom of the sidebar. See [releasing.md](releasing.md) for how releases work. To move to a version, point the app at that package:
+Each release on GitHub has a version such as `v0.3.1`; the running version is shown at the bottom of the sidebar. See [releasing.md](releasing.md) for how releases work. To move to a version, point the app at that package:
 
 ```powershell
 az webapp config appsettings set -g <your-resource-group> -n <your-unique-name> `
-  --settings WEBSITE_RUN_FROM_PACKAGE=https://github.com/ralpje/placesbuilder/releases/download/v0.2.0/placesbuilder-v0.2.0.zip
+  --settings WEBSITE_RUN_FROM_PACKAGE=https://github.com/ralpje/placesbuilder/releases/download/v0.3.1/placesbuilder-v0.3.1.zip
 ```
 
 The app restarts on the new version. To go back, set the old version again. Your data is in the storage account and is not touched by updates.

@@ -17,8 +17,8 @@ param location string = resourceGroup().location
 @allowed([ 'B1', 'B2', 'B3', 'P0v3', 'P1v3' ])
 param planSku string = 'B1'
 
-@description('Release of Places Builder to run, for example v0.1.3. Releases are published on GitHub.')
-param appVersion string = 'v0.1.3'
+@description('Release of Places Builder to run, for example v0.3.1. Releases are published on GitHub.')
+param appVersion string = 'v0.3.1'
 
 @description('URL of the app package (zip). Normally derived from appVersion. The app runs straight from this file and fetches it again at every restart.')
 param packageUrl string = 'https://github.com/ralpje/placesbuilder/releases/download/${appVersion}/placesbuilder-${appVersion}.zip'
