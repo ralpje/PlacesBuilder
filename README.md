@@ -47,3 +47,5 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 GNU Affero General Public License v3.0 only. See `LICENSE`.
+
+The name, logo and domain names are not covered by the licence. See [TRADEMARKS.md](TRADEMARKS.md). Places Builder is an independent project, not affiliated with Microsoft.
