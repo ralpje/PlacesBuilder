@@ -31,6 +31,7 @@ npm run build && npm start
 | `AZURE_MAPS_CLIENT_ID` / `AZURE_MAPS_KEY`, `BASEMAP` | Satellite basemap (`azure`, `osm` for development only, or `none`). |
 | `ALLOWED_GROUP_IDS`, `ALLOWED_ROLES`, `ALLOWED_USER_IDS`, `ALLOW_ANY_AUTHENTICATED` | Access check on top of App Service authentication. |
 | `ALLOWED_TENANT_IDS` | Only users of these Entra tenants are let in (the template sets your own tenant). Personal Microsoft accounts are always refused. |
+| `MAX_OFFICES`, `MAX_FLOORS_PER_OFFICE`, `MAX_UPLOAD_MB`, `MAX_STORAGE_MB` | Optional limits: offices per workspace, floors per office, size of one uploaded file, total storage of the workspace (all in whole numbers; megabytes are 1024 x 1024 bytes). Empty or `0` means no limit, which is the default. |
 | `DEV_AUTH` | Local development only. The server refuses to start with it in production. |
 
 Want to run it yourself in Azure? See [docs/self-hosting.md](docs/self-hosting.md).

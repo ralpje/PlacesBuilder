@@ -47,6 +47,19 @@ offices/<officeId>/floors/<floorId>/original.bin      the uploaded file
 
 Identity is the Entra object id (`oid` claim), never the e-mail address or UPN. Soft delete and versioning on the container allow recovery of deleted or overwritten items.
 
+## Limits
+
+Four optional limits protect storage and cost. All are off by default and are set with app settings (see the configuration table in the README):
+
+| Setting | Limit |
+| --- | --- |
+| `MAX_OFFICES` | Number of offices in the workspace |
+| `MAX_FLOORS_PER_OFFICE` | Number of floors in one office |
+| `MAX_UPLOAD_MB` | Size of one uploaded file (plan image or original). The built-in ceilings (25 MB for a plan image, 40 MB for an original) stay in force; this setting can only lower them |
+| `MAX_STORAGE_MB` | Total size of all stored files of the workspace |
+
+The repository layer enforces them, so every route is covered: creating an office or floor, and uploading a plan image or an original. A request over a limit is refused with HTTP 403 (count and storage) or 413 (file size) and a message that names the limit. Replacing a file does not count twice. The storage total is read from the storage listing when a file is uploaded, so two uploads at the very same moment can pass the check together and exceed the limit slightly; the next upload is refused. `/api/config` returns the active limits.
+
 ## Credentials and secrets (self-host kit)
 
 | What | Where it lives | Notes |

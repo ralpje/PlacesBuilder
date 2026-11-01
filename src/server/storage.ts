@@ -25,6 +25,8 @@ export interface Storage {
   put(key: string, data: Buffer, contentType: string, opts?: PutOptions): Promise<string>;
   delete(key: string): Promise<void>;
   list(prefix: string): Promise<string[]>;
+  /** Keys under the prefix with their size in bytes (used for storage limits). */
+  listWithSize(prefix: string): Promise<{ key: string; size: number }[]>;
 }
 
 /** Keys are plain relative paths made of safe segments. Anything else is a bug or an attack. */
@@ -114,6 +116,18 @@ export class LocalStorage implements Storage {
     };
     await walk(base);
     return out.filter((k) => k.startsWith(prefix)).sort();
+  }
+
+  async listWithSize(prefix: string): Promise<{ key: string; size: number }[]> {
+    const out: { key: string; size: number }[] = [];
+    for (const key of await this.list(prefix)) {
+      try {
+        out.push({ key, size: (await stat(this.path(key))).size });
+      } catch {
+        // removed in the meantime
+      }
+    }
+    return out;
   }
 }
 

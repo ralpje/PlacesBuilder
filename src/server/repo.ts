@@ -3,6 +3,8 @@ import { FEATURE_KINDS } from '../shared/types.ts';
 import type { Address, FeatureKind, FloorDoc, FloorIndexEntry, GeoRef, OfficeDoc, PlanFeature, Pt } from '../shared/types.ts';
 import { ordinalFromName, parsePlacesCsv } from '../shared/places.ts';
 import { normalizeDeg } from '../shared/georef.ts';
+import { NO_LIMITS } from './config.ts';
+import type { Limits } from './config.ts';
 import { PreconditionError } from './storage.ts';
 import type { Storage } from './storage.ts';
 
@@ -134,10 +136,32 @@ function cleanGeoref(v: unknown): GeoRef | undefined {
   return { lon, lat, rotationDeg: normalizeDeg(rot), metersPerPixel: mpp };
 }
 
+const mb = (bytes: number) => Math.round((bytes / (1024 * 1024)) * 10) / 10;
+
 export class Repo {
   private s: Storage;
-  constructor(storage: Storage) {
+  private limits: Limits;
+  constructor(storage: Storage, limits: Limits = NO_LIMITS) {
     this.s = storage;
+    this.limits = limits;
+  }
+
+  private quota(what: string, message: string): HttpError {
+    return new HttpError(403, message, { code: 'quota', limit: what });
+  }
+
+  /** An uploaded file may not exceed the upload limit, nor push the workspace over its storage limit. */
+  private async checkUpload(size: number, replacing: string): Promise<void> {
+    const { maxUploadBytes, maxStorageBytes } = this.limits;
+    if (maxUploadBytes && size > maxUploadBytes) {
+      throw new HttpError(413, `This file is larger than the limit of ${mb(maxUploadBytes)} MB per upload.`, { code: 'quota', limit: 'upload' });
+    }
+    if (maxStorageBytes) {
+      const used = (await this.s.listWithSize('')).filter((e) => e.key !== replacing).reduce((n, e) => n + e.size, 0);
+      if (used + size > maxStorageBytes) {
+        throw this.quota('storage', `This would exceed the storage limit of ${mb(maxStorageBytes)} MB for this workspace. Remove a floor plan or an office first.`);
+      }
+    }
   }
 
   private async read<T>(key: string): Promise<{ value: T; etag: string } | null> {
@@ -171,6 +195,10 @@ export class Repo {
   async createOffice(input: { name?: unknown; address?: unknown }): Promise<OfficeDoc> {
     const name = text(input.name, 120);
     if (!name) throw new HttpError(400, 'Give the office a name.');
+    if (this.limits.maxOffices) {
+      const count = (await this.s.list('offices/')).filter((k) => /^offices\/[^/]+\/office\.json$/.test(k)).length;
+      if (count >= this.limits.maxOffices) throw this.quota('offices', `This workspace is limited to ${this.limits.maxOffices} offices.`);
+    }
     const t = now();
     const doc: OfficeDoc = {
       id: randomUUID(),
@@ -330,7 +358,10 @@ export class Repo {
   }
 
   async createFloor(officeId: string, body: Record<string, unknown>): Promise<FloorDoc> {
-    await this.getOffice(officeId);
+    const office = await this.getOffice(officeId);
+    if (this.limits.maxFloorsPerOffice && office.floors.length >= this.limits.maxFloorsPerOffice) {
+      throw this.quota('floors', `An office is limited to ${this.limits.maxFloorsPerOffice} floors.`);
+    }
     const name = text(body.name, 120);
     if (!name) throw new HttpError(400, 'Give the floor a name.');
     const ordinal = num(body.ordinal) ?? 0;
@@ -439,6 +470,7 @@ export class Repo {
       throw new HttpError(400, 'The plan image has an invalid size.');
     }
     await this.getFloor(officeId, floorId);
+    await this.checkUpload(png.length, K.plan(officeId, floorId));
     await this.s.put(K.plan(officeId, floorId), png, 'image/png');
     return this.mutateFloor(officeId, floorId, (f) => {
       f.plan = {
@@ -456,6 +488,7 @@ export class Repo {
     if (!sniffOriginal(data)) throw new HttpError(415, 'Upload a PDF, PNG or JPEG file.');
     const f = await this.getFloor(officeId, floorId);
     if (!f.plan) throw new HttpError(409, 'Upload the plan image first.');
+    await this.checkUpload(data.length, K.original(officeId, floorId));
     await this.s.put(K.original(officeId, floorId), data, 'application/octet-stream');
     return this.mutateFloor(officeId, floorId, (d) => {
       if (d.plan) {

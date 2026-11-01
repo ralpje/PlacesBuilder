@@ -1,6 +1,24 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+/** Optional limits. 0 means no limit. */
+export interface Limits {
+  maxOffices: number; // per workspace
+  maxFloorsPerOffice: number;
+  maxUploadBytes: number; // per uploaded file
+  maxStorageBytes: number; // per workspace, all offices together
+}
+
+export const NO_LIMITS: Limits = { maxOffices: 0, maxFloorsPerOffice: 0, maxUploadBytes: 0, maxStorageBytes: 0 };
+const MB = 1024 * 1024;
+
+function limit(env: NodeJS.ProcessEnv, name: string, unit = 1): number {
+  const raw = env[name]?.trim();
+  if (!raw) return 0;
+  if (!/^\d+$/.test(raw)) throw new Error(`${name} must be a whole number (0 or empty = no limit).`);
+  return Number(raw) * unit;
+}
+
 export interface Config {
   port: number;
   production: boolean;
@@ -18,6 +36,7 @@ export interface Config {
   allowAnyAuthenticated: boolean; // rely on Entra "Assignment required" alone
   staticDir: string;
   edition: 'selfhost' | 'hosted'; // hosted = one workspace per Entra tenant, selfhost = one shared workspace
+  limits: Limits;
   easyAuthEnabled: boolean; // App Service sets WEBSITE_AUTH_ENABLED=True when authentication is switched on
 }
 
@@ -59,6 +78,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowAnyAuthenticated: env.ALLOW_ANY_AUTHENTICATED === '1',
     staticDir,
     edition: env.EDITION === 'hosted' ? 'hosted' : 'selfhost',
+    limits: {
+      maxOffices: limit(env, 'MAX_OFFICES'),
+      maxFloorsPerOffice: limit(env, 'MAX_FLOORS_PER_OFFICE'),
+      maxUploadBytes: limit(env, 'MAX_UPLOAD_MB', MB),
+      maxStorageBytes: limit(env, 'MAX_STORAGE_MB', MB),
+    },
     easyAuthEnabled: env.WEBSITE_AUTH_ENABLED === 'True',
   };
 }
