@@ -31,10 +31,11 @@ export function Shell({ children, page }: { children: (me: MeInfo | null) => Rea
   const [meLoaded, setMeLoaded] = useState(false);
   const name = me?.name ?? '';
   const [serverVersion, setServerVersion] = useState('');
+  const [donateUrl, setDonateUrl] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { api.me().then(setMe).catch(() => undefined).finally(() => setMeLoaded(true)); }, []);
-  useEffect(() => { api.config().then((c) => setServerVersion(c.version)).catch(() => undefined); }, []);
+  useEffect(() => { api.config().then((c) => { setServerVersion(c.version); setDonateUrl(c.donateUrl ?? ''); }).catch(() => undefined); }, []);
   const next: Theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
   return (
@@ -69,6 +70,7 @@ export function Shell({ children, page }: { children: (me: MeInfo | null) => Rea
           {serverVersion && serverVersion !== APP_VERSION && <> (server {serverVersion})</>}
           <br />
           <a href="https://github.com/ralpje/placesbuilder/issues/new/choose" target="_blank" rel="noreferrer">Report an issue</a>
+          {donateUrl && <><br /><a href={donateUrl} target="_blank" rel="noreferrer">Support this project</a></>}
         </div>
       </aside>
       <main className="content">{!meLoaded ? <p className="muted">Loading…</p> : me?.blocked ? <NoAccess code={me.blocked.code} message={me.blocked.message} /> : children(me)}</main>

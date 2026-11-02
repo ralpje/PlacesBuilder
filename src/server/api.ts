@@ -73,7 +73,7 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
     // The built-in ceiling for a file, lowered by the optional limit.
     const uploadMax = (hard: number) => (limits.maxUploadBytes ? Math.min(hard, limits.maxUploadBytes) : hard);
 
-    if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION, limits });
+    if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION, limits, donateUrl: cfg.donateUrl ?? '' });
 
     const resolved = await workspaces.resolve(user);
     if (a === 'me' && method === 'GET') {
