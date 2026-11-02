@@ -4,6 +4,7 @@ import { api } from './api.ts';
 import { APP_VERSION } from '../shared/version.ts';
 import type { MeInfo } from '../shared/types.ts';
 import { NoAccess } from './pages/NoAccess.tsx';
+import { TermsGate } from './pages/TermsGate.tsx';
 
 type Theme = 'auto' | 'light' | 'dark';
 const KEY = 'pb-theme';
@@ -73,7 +74,7 @@ export function Shell({ children, page }: { children: (me: MeInfo | null) => Rea
           {donateUrl && <><br /><a href={donateUrl} target="_blank" rel="noreferrer">Support this project</a></>}
         </div>
       </aside>
-      <main className="content">{!meLoaded ? <p className="muted">Loading…</p> : me?.blocked ? <NoAccess code={me.blocked.code} message={me.blocked.message} /> : children(me)}</main>
+      <main className="content">{!meLoaded ? <p className="muted">Loading…</p> : me?.blocked ? (me.blocked.terms ? <TermsGate terms={me.blocked.terms} /> : <NoAccess code={me.blocked.code} message={me.blocked.message} />) : children(me)}</main>
     </div>
   );
 }

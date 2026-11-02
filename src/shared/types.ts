@@ -141,10 +141,12 @@ export const UNIT_CATEGORIES = [
 export interface MemberInfo { oid: string; name: string; email: string; role: 'owner' | 'member'; joinedAt: string }
 export interface InviteInfo { id: string; email: string; createdAt: string }
 export interface WorkspaceInfo { role: 'owner' | 'member'; members: MemberInfo[]; invites: InviteInfo[]; limit: number }
+/** Documents a user has to accept before using the service (only when the server is configured with them). */
+export interface TermsInfo { version: string; termsUrl: string; privacyUrl: string; dpaUrl: string; owner: boolean }
 export interface MeInfo {
   id: string;
   name: string;
   edition: 'selfhost' | 'hosted';
   workspace: { id: string; role: 'owner' | 'member'; canManageMembers: boolean } | null;
-  blocked: { code: string; message: string } | null;
+  blocked: { code: string; message: string; terms?: TermsInfo } | null;
 }

@@ -1,6 +1,9 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+/** Documents to accept before use. Only the multi-organisation edition asks for them. */
+export interface Terms { version: string; termsUrl: string; privacyUrl: string; dpaUrl: string }
+
 /** Optional limits. 0 means no limit. */
 export interface Limits {
   maxOffices: number; // per workspace
@@ -21,6 +24,16 @@ function httpsUrl(env: NodeJS.ProcessEnv, name: string): string {
   try { u = new URL(raw); } catch { throw new Error(`${name} must be a full https:// address (or empty).`); }
   if (u.protocol !== 'https:' || u.username || u.password) throw new Error(`${name} must be a full https:// address (or empty).`);
   return u.toString();
+}
+
+function termsFrom(env: NodeJS.ProcessEnv): Terms | null {
+  const version = env.TERMS_VERSION?.trim();
+  if (!version) return null;
+  if (!/^[A-Za-z0-9._-]{1,40}$/.test(version)) throw new Error('TERMS_VERSION may only contain letters, digits, dots, dashes and underscores (at most 40).');
+  const termsUrl = httpsUrl(env, 'TERMS_URL');
+  const privacyUrl = httpsUrl(env, 'PRIVACY_URL');
+  if (!termsUrl || !privacyUrl) throw new Error('TERMS_URL and PRIVACY_URL are required when TERMS_VERSION is set.');
+  return { version, termsUrl, privacyUrl, dpaUrl: httpsUrl(env, 'DPA_URL') };
 }
 
 function limit(env: NodeJS.ProcessEnv, name: string, unit = 1): number {
@@ -48,6 +61,7 @@ export interface Config {
   staticDir: string;
   edition: 'selfhost' | 'hosted'; // hosted = one workspace per Entra tenant, selfhost = one shared workspace
   limits: Limits;
+  terms: Terms | null; // set with TERMS_VERSION; null = nobody is asked to accept anything
   donateUrl: string; // optional link to a page where people can support the project; empty = no link
   easyAuthEnabled: boolean; // App Service sets WEBSITE_AUTH_ENABLED=True when authentication is switched on
 }
@@ -98,6 +112,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       requestsPerMinute: limit(env, 'RATE_LIMIT_PER_MINUTE'),
       tilesPerHour: limit(env, 'TILE_LIMIT_PER_HOUR'),
     },
+    terms: termsFrom(env),
     donateUrl: httpsUrl(env, 'DONATE_URL'),
     easyAuthEnabled: env.WEBSITE_AUTH_ENABLED === 'True',
   };

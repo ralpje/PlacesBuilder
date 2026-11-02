@@ -40,6 +40,7 @@ export const api = {
   workspace: () => call<WorkspaceInfo>('GET', 'workspace'),
   invite: (email: string) => call<InviteInfo>('POST', 'workspace/invites', jsonBody({ email }), JSON_H),
   revokeInvite: (id: string) => call<{ ok: true }>('DELETE', `workspace/invites/${id}`),
+  acceptTerms: (version: string) => call<{ ok: true }>('POST', 'terms/accept', jsonBody({ version }), JSON_H),
   transferOwner: (oid: string) => call<{ ok: true }>('POST', 'workspace/owner', jsonBody({ oid }), JSON_H),
   removeMember: (oid: string) => call<{ ok: true }>('DELETE', `workspace/members/${oid}`),
   offices: () => call<OfficeSummary[]>('GET', 'offices'),
