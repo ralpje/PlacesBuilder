@@ -82,8 +82,15 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
         name: user.name,
         edition: cfg.edition,
         workspace: resolved.ok ? { id: resolved.workspace.id, role: resolved.workspace.role, canManageMembers: !!resolved.workspace.admin } : null,
-        blocked: resolved.ok ? null : { code: resolved.code, message: resolved.message },
+        blocked: resolved.ok ? null : { code: resolved.code, message: resolved.message, ...(resolved.code === 'terms_required' ? { terms: resolved.terms } : {}) },
       });
+    }
+    if (a === 'terms' && b === 'accept' && !c && method === 'POST') {
+      if (!workspaces.acceptTerms) throw new HttpError(404, 'Not found');
+      const body = await readJson(req, 10_000);
+      await workspaces.acceptTerms(user, typeof body.version === 'string' ? body.version : '');
+      audit(`terms.accept ${String(body.version)}`);
+      return json(200, { ok: true });
     }
     if (!resolved.ok) throw new HttpError(403, resolved.message, { code: resolved.code });
     const { workspace } = resolved;

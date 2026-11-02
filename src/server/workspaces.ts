@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { User } from './auth.ts';
 import { NO_LIMITS } from './config.ts';
-import type { Config, Limits } from './config.ts';
+import type { Config, Limits, Terms } from './config.ts';
 import { HttpError, Repo } from './repo.ts';
 import { PreconditionError } from './storage.ts';
 import type { PutOptions, Storage, Stored } from './storage.ts';
-import type { InviteInfo, MemberInfo, WorkspaceInfo } from '../shared/types.ts';
+import type { InviteInfo, MemberInfo, TermsInfo, WorkspaceInfo } from '../shared/types.ts';
 
 /**
  * A workspace is the unit of data separation. In the self-host edition there is one shared workspace.
@@ -22,10 +22,13 @@ export interface Workspace {
 
 export type Resolved =
   | { ok: true; workspace: Workspace }
-  | { ok: false; code: 'tenant_in_use' | 'invalid_identity'; message: string; ownerHint?: string };
+  | { ok: false; code: 'tenant_in_use' | 'invalid_identity'; message: string; ownerHint?: string }
+  | { ok: false; code: 'terms_required'; message: string; terms: TermsInfo };
 
 export interface Workspaces {
   resolve(user: User): Promise<Resolved>;
+  /** Records that the user accepted this version of the terms. Only the multi-organisation edition has it. */
+  acceptTerms?(user: User, version: string): Promise<void>;
 }
 
 export type { InviteInfo, MemberInfo, WorkspaceInfo };
@@ -79,7 +82,7 @@ export const MEMBER_LIMIT = 25; // members plus open invites
 const CACHE_MS = 20_000;
 
 interface TenantDoc { tid: string; ownerOid: string; ownerNameHint: string; ownerEmailHint: string; createdAt: string }
-interface MemberDoc { oid: string; name: string; email: string; role: 'owner' | 'member'; joinedAt: string }
+interface MemberDoc { oid: string; name: string; email: string; role: 'owner' | 'member'; joinedAt: string; termsVersion?: string; termsAt?: string }
 interface InviteDoc { email: string; invitedBy: string; createdAt: string }
 
 const now = () => new Date().toISOString();
@@ -122,9 +125,11 @@ export class TenantWorkspaces implements Workspaces {
   // Positive results only, for a short time, so that the map (many tile requests) does not read storage every time.
   private cache = new Map<string, { ws: Workspace; until: number }>();
   private limits: Limits;
-  constructor(storage: Storage, limits: Limits = NO_LIMITS) {
+  private terms: Terms | null;
+  constructor(storage: Storage, limits: Limits = NO_LIMITS, terms: Terms | null = null) {
     this.storage = storage;
     this.limits = limits;
+    this.terms = terms;
   }
 
   private repoFor(tid: string): Repo {
@@ -184,11 +189,32 @@ export class TenantWorkspaces implements Workspaces {
         message: `Your organization already uses Places Builder. Ask the owner${hint ? ` (${hint})` : ''} to invite you.`,
       };
     }
+    if (this.terms && member.termsVersion !== this.terms.version) {
+      const { version, termsUrl, privacyUrl, dpaUrl } = this.terms;
+      return {
+        ok: false,
+        code: 'terms_required',
+        message: 'Please read and accept the terms of use and the privacy statement to continue.',
+        terms: { version, termsUrl, privacyUrl, dpaUrl, owner: tenant.ownerOid === oid },
+      };
+    }
     // The tenant document is the only authority on who owns the organization; the role in a member file is for display.
     const role = tenant.ownerOid === oid ? 'owner' : 'member';
     const workspace: Workspace = { id: tid, role, repo: this.repoFor(tid), admin: this.adminFor(tid, role) };
     this.cache.set(cacheKey, { ws: workspace, until: Date.now() + CACHE_MS });
     return { ok: true, workspace };
+  }
+
+  async acceptTerms(user: User, version: string): Promise<void> {
+    if (!this.terms) throw new HttpError(404, 'Not found');
+    const tid = (user.tenantId ?? '').toLowerCase();
+    const oid = user.id.toLowerCase();
+    if (!GUID.test(tid) || !GUID.test(oid)) throw new HttpError(403, 'Your sign-in could not be matched to an organization.');
+    if (version !== this.terms.version) throw new HttpError(409, 'The terms were updated. Reload the page to read the current version.');
+    const member = await readDoc<MemberDoc>(this.storage, K.member(tid, oid));
+    if (!member) throw new HttpError(403, 'You are not a member of this organization.');
+    await this.storage.put(K.member(tid, oid), enc({ ...member, termsVersion: version, termsAt: now() }), 'application/json');
+    this.cache.delete(`${tid}/${oid}`);
   }
 
   private adminFor(tid: string, role: 'owner' | 'member'): WorkspaceAdmin {
@@ -269,5 +295,5 @@ export class TenantWorkspaces implements Workspaces {
 
 export function createWorkspaces(cfg: Config, storage: Storage): Workspaces {
   const limits = cfg.limits ?? NO_LIMITS;
-  return cfg.edition === 'hosted' ? new TenantWorkspaces(storage, limits) : new SingleWorkspace(storage, limits);
+  return cfg.edition === 'hosted' ? new TenantWorkspaces(storage, limits, cfg.terms ?? null) : new SingleWorkspace(storage, limits);
 }

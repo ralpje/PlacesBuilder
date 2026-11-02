@@ -261,3 +261,81 @@ test('API: POST /api/workspace/owner', async () => {
   const selfhost = createApi({ ...cfg, edition: 'selfhost' } as Config, new SingleWorkspace((await setup()).storage));
   assert.equal((await call(selfhost, alice, 'POST', '/api/workspace/owner', { oid: bob.id })).status, 404);
 });
+
+// ---- terms acceptance (multi-organisation edition only) ----
+const TERMS = { version: '2026-11-02', termsUrl: 'https://example.com/terms/', privacyUrl: 'https://example.com/privacy/', dpaUrl: 'https://example.com/dpa/' };
+async function setupTerms(terms: typeof TERMS | null = TERMS) {
+  const storage = new LocalStorage(await mkdtemp(join(tmpdir(), 'pb-terms-')));
+  return { storage, ws: new TenantWorkspaces(storage, undefined, terms) };
+}
+
+test('terms: nobody is asked when no terms are configured', async () => {
+  const { ws } = await setupTerms(null);
+  assert.ok((await ws.resolve(alice)).ok);
+});
+
+test('terms: a user must accept the current version first; the owner is told they accept for the organisation', async () => {
+  const { ws } = await setupTerms();
+  const r = await ws.resolve(alice);
+  assert.ok(!r.ok && r.code === 'terms_required');
+  assert.equal(r.terms.version, TERMS.version);
+  assert.equal(r.terms.owner, true);
+  await ws.acceptTerms!(alice, TERMS.version);
+  assert.ok((await ws.resolve(alice)).ok);
+});
+
+test('terms: a stale version is refused, and a new version asks everyone again', async () => {
+  const { storage, ws } = await setupTerms();
+  await ws.resolve(alice);
+  await assert.rejects(ws.acceptTerms!(alice, 'old'), (e: { status?: number }) => e.status === 409);
+  await ws.acceptTerms!(alice, TERMS.version);
+  const next = new TenantWorkspaces(storage, undefined, { ...TERMS, version: '2027-01-01' });
+  const r = await next.resolve(alice);
+  assert.ok(!r.ok && r.code === 'terms_required');
+});
+
+test('terms: invited members accept too, as members; someone without membership cannot accept', async () => {
+  const { ws } = await setupTerms();
+  await ws.resolve(alice);
+  await ws.acceptTerms!(alice, TERMS.version);
+  const a = await ws.resolve(alice);
+  assert.ok(a.ok);
+  await a.workspace.admin!.invite(bob.email!, alice);
+  const b = await ws.resolve(bob);
+  assert.ok(!b.ok && b.code === 'terms_required' && b.terms.owner === false);
+  const stranger = user(TID_A, 9, 'Eve', 'eve@contoso.com');
+  await assert.rejects(ws.acceptTerms!(stranger, TERMS.version), (e: { status?: number }) => e.status === 403);
+  await ws.acceptTerms!(bob, TERMS.version);
+  assert.ok((await ws.resolve(bob)).ok);
+});
+
+test('terms: acceptance is per person and per organisation', async () => {
+  const { ws } = await setupTerms();
+  await ws.resolve(alice);
+  await ws.resolve(carol);
+  await ws.acceptTerms!(carol, TERMS.version);
+  assert.ok((await ws.resolve(carol)).ok);
+  const a = await ws.resolve(alice);
+  assert.ok(!a.ok && a.code === 'terms_required', 'carol accepting does not accept for alice in another tenant');
+});
+
+test('API: terms block every route except me and accept; self-host has no such route', async () => {
+  const { ws } = await setupTerms();
+  const api = createApi(cfg, ws);
+  const me = await call(api, alice, 'GET', '/api/me');
+  assert.equal(me.status, 200);
+  assert.equal(me.body.blocked.code, 'terms_required');
+  assert.equal(me.body.blocked.terms.version, TERMS.version);
+  assert.equal((await call(api, alice, 'GET', '/api/offices')).status, 403);
+  assert.equal((await call(api, alice, 'POST', '/api/offices', { name: 'HQ' })).status, 403);
+  assert.equal((await call(api, alice, 'GET', '/api/workspace')).status, 403);
+  assert.equal((await call(api, alice, 'POST', '/api/terms/accept', { version: 'old' })).status, 409);
+  assert.equal((await call(api, carol, 'POST', '/api/terms/accept', { version: TERMS.version })).status, 200, 'carol owns another tenant and can accept there');
+  assert.equal((await call(api, alice, 'POST', '/api/terms/accept', { version: TERMS.version })).status, 200);
+  assert.equal((await call(api, alice, 'GET', '/api/offices')).status, 200);
+  const me2 = await call(api, alice, 'GET', '/api/me');
+  assert.equal(me2.body.blocked, null);
+
+  const selfhost = createApi({ ...cfg, edition: 'selfhost' } as Config, new SingleWorkspace((await setup()).storage));
+  assert.equal((await call(selfhost, alice, 'POST', '/api/terms/accept', { version: 'x' })).status, 404);
+});

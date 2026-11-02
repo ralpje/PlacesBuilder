@@ -158,3 +158,12 @@ test('DONATE_URL: empty by default, only https addresses without credentials', (
     assert.throws(() => loadConfig({ DONATE_URL: bad }), /DONATE_URL/, bad);
   }
 });
+
+test('TERMS_VERSION: off by default; needs the terms and privacy links; only https', () => {
+  assert.equal(loadConfig({}).terms, null);
+  const ok = loadConfig({ TERMS_VERSION: '2026-11-02', TERMS_URL: 'https://x.example/t', PRIVACY_URL: 'https://x.example/p' }).terms;
+  assert.deepEqual(ok, { version: '2026-11-02', termsUrl: 'https://x.example/t', privacyUrl: 'https://x.example/p', dpaUrl: '' });
+  assert.throws(() => loadConfig({ TERMS_VERSION: '1' }), /TERMS_URL/);
+  assert.throws(() => loadConfig({ TERMS_VERSION: '1', TERMS_URL: 'http://x.example', PRIVACY_URL: 'https://x.example/p' }), /TERMS_URL/);
+  assert.throws(() => loadConfig({ TERMS_VERSION: 'a b', TERMS_URL: 'https://x.example/t', PRIVACY_URL: 'https://x.example/p' }), /TERMS_VERSION/);
+});
