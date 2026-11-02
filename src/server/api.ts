@@ -109,6 +109,12 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
         audit(`member.remove ${c}`);
         return json(200, { ok: true });
       }
+      if (b === 'owner' && !c && method === 'POST') {
+        const body = await readJson(req, 10_000);
+        await admin.transferOwnership(typeof body.oid === 'string' ? body.oid : '', user);
+        audit(`owner.transfer ${String(body.oid)}`);
+        return json(200, { ok: true });
+      }
       throw new HttpError(404, 'Not found');
     }
 

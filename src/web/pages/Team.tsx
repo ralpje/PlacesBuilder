@@ -61,6 +61,9 @@ export function TeamPage({ myId }: { myId: string }) {
               {owner && (
                 <td>
                   {m.oid !== myId && (
+                    <button onClick={() => confirm(`Make ${m.name} the owner? You become a normal member and can no longer invite or remove people.`) && run(() => api.transferOwner(m.oid), `${m.name} is now the owner.`)} style={{ marginRight: 8 }}>Make owner</button>
+                  )}
+                  {m.oid !== myId && (
                     <button className="danger" onClick={() => confirm(`Remove ${m.name}? They lose access straight away. Their work stays.`) && run(() => api.removeMember(m.oid), `${m.name} was removed.`)}>Remove</button>
                   )}
                 </td>
