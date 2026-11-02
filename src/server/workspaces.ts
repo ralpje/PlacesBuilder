@@ -35,6 +35,8 @@ export interface WorkspaceAdmin {
   invite(email: string, by: User): Promise<InviteInfo>;
   revokeInvite(id: string): Promise<void>;
   removeMember(oid: string, by: User): Promise<void>;
+  /** The owner hands ownership to another member and becomes a normal member. */
+  transferOwnership(oid: string, by: User): Promise<void>;
 }
 
 /** Storage confined to a key prefix. */
@@ -182,7 +184,9 @@ export class TenantWorkspaces implements Workspaces {
         message: `Your organization already uses Places Builder. Ask the owner${hint ? ` (${hint})` : ''} to invite you.`,
       };
     }
-    const workspace: Workspace = { id: tid, role: member.role, repo: this.repoFor(tid), admin: this.adminFor(tid, member.role) };
+    // The tenant document is the only authority on who owns the organization; the role in a member file is for display.
+    const role = tenant.ownerOid === oid ? 'owner' : 'member';
+    const workspace: Workspace = { id: tid, role, repo: this.repoFor(tid), admin: this.adminFor(tid, role) };
     this.cache.set(cacheKey, { ws: workspace, until: Date.now() + CACHE_MS });
     return { ok: true, workspace };
   }
@@ -195,9 +199,10 @@ export class TenantWorkspaces implements Workspaces {
     return {
       info: async () => {
         const members: MemberInfo[] = [];
+        const ownerOid = (await readDoc<TenantDoc>(s, K.tenant(tid)))?.ownerOid;
         for (const k of await s.list(K.members(tid))) {
           const m = await readDoc<MemberDoc>(s, k);
-          if (m) members.push(m);
+          if (m) members.push({ ...m, role: m.oid.toLowerCase() === ownerOid ? 'owner' : 'member' });
         }
         const invites: InviteInfo[] = [];
         if (role === 'owner') {
@@ -232,6 +237,31 @@ export class TenantWorkspaces implements Workspaces {
         if (o === by.id.toLowerCase()) throw new HttpError(400, 'The owner cannot remove themselves.');
         await s.delete(K.member(tid, o));
         this.cache.delete(`${tid}/${o}`);
+      },
+      transferOwnership: async (oid, by) => {
+        needOwner();
+        const target = oid.toLowerCase();
+        const me = by.id.toLowerCase();
+        if (!GUID.test(target)) throw new HttpError(404, 'Not found');
+        if (target === me) throw new HttpError(400, 'You are already the owner.');
+        const member = await readDoc<MemberDoc>(s, K.member(tid, target));
+        if (!member) throw new HttpError(404, 'That person is not a member of this organization.');
+        const stored = await s.get(K.tenant(tid));
+        const tenant = stored ? (JSON.parse(stored.data.toString('utf8')) as TenantDoc) : null;
+        if (!stored || !tenant || tenant.ownerOid !== me) throw new HttpError(403, 'Only the owner can do this.');
+        const next: TenantDoc = { ...tenant, ownerOid: target, ownerNameHint: maskName(member.name), ownerEmailHint: maskEmail(member.email) };
+        try {
+          await s.put(K.tenant(tid), enc(next), 'application/json', { ifMatch: stored.etag }); // this single write is the transfer
+        } catch (e) {
+          if (e instanceof PreconditionError) throw new HttpError(409, 'The organization changed while you were doing this. Reload and try again.');
+          throw e;
+        }
+        // The member files only show the role; they are updated for display and repaired by the tenant document if this fails.
+        for (const [o, role] of [[target, 'owner'], [me, 'member']] as const) {
+          const m = await readDoc<MemberDoc>(s, K.member(tid, o));
+          if (m) await s.put(K.member(tid, o), enc({ ...m, role }), 'application/json').catch(() => undefined);
+          this.cache.delete(`${tid}/${o}`);
+        }
       },
     };
   }

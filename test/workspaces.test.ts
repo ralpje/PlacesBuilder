@@ -203,3 +203,61 @@ test('self-host edition: one shared workspace, no member management', async () =
   const me = await call(api, alice, 'GET', '/api/me');
   assert.equal(me.body.workspace.canManageMembers, false);
 });
+
+test('ownership transfer: new owner gains the powers, old owner loses them', async () => {
+  const { ws } = await setup();
+  const a = await ws.resolve(alice);
+  assert.ok(a.ok);
+  await a.workspace.admin!.invite(bob.email!, alice);
+  const b = await ws.resolve(bob);
+  assert.ok(b.ok);
+  const status = (code: number) => (e: { status?: number }) => e.status === code;
+  await assert.rejects(b.workspace.admin!.transferOwnership(bob.id, bob), status(403), 'a member cannot transfer');
+  await assert.rejects(a.workspace.admin!.transferOwnership(alice.id, alice), status(400), 'not to yourself');
+  await assert.rejects(a.workspace.admin!.transferOwnership(oid(99), alice), status(404), 'only to an existing member');
+  await assert.rejects(a.workspace.admin!.transferOwnership('not-a-guid', alice), status(404));
+
+  await a.workspace.admin!.transferOwnership(bob.id, alice);
+  const a2 = await ws.resolve(alice);
+  const b2 = await ws.resolve(bob);
+  assert.ok(a2.ok && b2.ok);
+  assert.equal(a2.workspace.role, 'member');
+  assert.equal(b2.workspace.role, 'owner');
+  await assert.rejects(a2.workspace.admin!.invite('x@contoso.com', alice), status(403));
+  await b2.workspace.admin!.invite('x@contoso.com', bob);
+  const info = await b2.workspace.admin!.info();
+  assert.deepEqual(info.members.map((m) => [m.name, m.role]).sort(), [['Alice Anderson', 'member'], ['Bob Brown', 'owner']]);
+
+  // The stale handle of the former owner no longer works either (it was resolved before the transfer).
+  await assert.rejects(a.workspace.admin!.transferOwnership(bob.id, alice), status(403));
+
+  // A newcomer now sees the new owner as hint.
+  const dan = user(TID_A, 4, 'Dan Dawson', 'dan@contoso.com');
+  const d = await ws.resolve(dan);
+  assert.ok(!d.ok);
+  assert.match(d.message, /B••• B•••/);
+});
+
+test('ownership transfer cannot cross tenants', async () => {
+  const { ws } = await setup();
+  const a = await ws.resolve(alice);
+  const c = await ws.resolve(carol);
+  assert.ok(a.ok && c.ok);
+  await assert.rejects(a.workspace.admin!.transferOwnership(carol.id, alice), (e: { status?: number }) => e.status === 404, 'a member of another tenant is not a member here');
+  assert.equal((await ws.resolve(carol)).ok && ((await ws.resolve(carol)) as { workspace: { role: string } }).workspace.role, 'owner');
+  assert.equal(((await ws.resolve(alice)) as { workspace: { role: string } }).workspace.role, 'owner');
+});
+
+test('API: POST /api/workspace/owner', async () => {
+  const { ws } = await setup();
+  const api = createApi(cfg, ws);
+  await call(api, alice, 'POST', '/api/workspace/invites', { email: 'bob@contoso.com' });
+  assert.equal((await call(api, bob, 'GET', '/api/workspace')).status, 200);
+  assert.equal((await call(api, bob, 'POST', '/api/workspace/owner', { oid: bob.id })).status, 403);
+  assert.equal((await call(api, carol, 'POST', '/api/workspace/owner', { oid: alice.id })).status, 404, 'carol owns another tenant; alice is no member there');
+  assert.equal((await call(api, alice, 'POST', '/api/workspace/owner', { oid: bob.id })).status, 200);
+  assert.equal((await call(api, alice, 'GET', '/api/workspace')).body.role, 'member');
+  assert.equal((await call(api, bob, 'GET', '/api/workspace')).body.role, 'owner');
+  const selfhost = createApi({ ...cfg, edition: 'selfhost' } as Config, new SingleWorkspace((await setup()).storage));
+  assert.equal((await call(selfhost, alice, 'POST', '/api/workspace/owner', { oid: bob.id })).status, 404);
+});
