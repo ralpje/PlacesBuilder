@@ -24,7 +24,7 @@ body:
       label: Which version did you use?
       options:
         - Self-hosted
-        - The online pilot
+        - The online beta
         - Not sure
   - type: input
     id: version
