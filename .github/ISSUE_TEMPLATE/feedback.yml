@@ -1,0 +1,32 @@
+name: Feedback
+description: Tell us what worked and what did not
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues on this repository are public. Do not post floor plans, room lists, tenant IDs, names or other data from your organisation. Describe the problem in words or with a made-up example.
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you try to do?
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Which version did you use?
+      options:
+        - Self-hosted
+        - The online pilot
+        - Not sure
+  - type: input
+    id: version
+    attributes:
+      label: App version (bottom of the sidebar)
