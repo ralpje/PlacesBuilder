@@ -14,6 +14,15 @@ export interface Limits {
 export const NO_LIMITS: Limits = { maxOffices: 0, maxFloorsPerOffice: 0, maxUploadBytes: 0, maxStorageBytes: 0, requestsPerMinute: 0, tilesPerHour: 0 };
 const MB = 1024 * 1024;
 
+function httpsUrl(env: NodeJS.ProcessEnv, name: string): string {
+  const raw = env[name]?.trim();
+  if (!raw) return '';
+  let u: URL;
+  try { u = new URL(raw); } catch { throw new Error(`${name} must be a full https:// address (or empty).`); }
+  if (u.protocol !== 'https:' || u.username || u.password) throw new Error(`${name} must be a full https:// address (or empty).`);
+  return u.toString();
+}
+
 function limit(env: NodeJS.ProcessEnv, name: string, unit = 1): number {
   const raw = env[name]?.trim();
   if (!raw) return 0;
@@ -39,6 +48,7 @@ export interface Config {
   staticDir: string;
   edition: 'selfhost' | 'hosted'; // hosted = one workspace per Entra tenant, selfhost = one shared workspace
   limits: Limits;
+  donateUrl: string; // optional link to a page where people can support the project; empty = no link
   easyAuthEnabled: boolean; // App Service sets WEBSITE_AUTH_ENABLED=True when authentication is switched on
 }
 
@@ -88,6 +98,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       requestsPerMinute: limit(env, 'RATE_LIMIT_PER_MINUTE'),
       tilesPerHour: limit(env, 'TILE_LIMIT_PER_HOUR'),
     },
+    donateUrl: httpsUrl(env, 'DONATE_URL'),
     easyAuthEnabled: env.WEBSITE_AUTH_ENABLED === 'True',
   };
 }

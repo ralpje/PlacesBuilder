@@ -35,7 +35,7 @@ export interface ImportResult {
 export interface GeoHit { label: string; lon: number; lat: number }
 
 export const api = {
-  config: () => call<{ basemap: 'azure' | 'osm' | 'none'; version: string }>('GET', 'config'),
+  config: () => call<{ basemap: 'azure' | 'osm' | 'none'; version: string; donateUrl?: string }>('GET', 'config'),
   me: () => call<MeInfo>('GET', 'me'),
   workspace: () => call<WorkspaceInfo>('GET', 'workspace'),
   invite: (email: string) => call<InviteInfo>('POST', 'workspace/invites', jsonBody({ email }), JSON_H),

@@ -150,3 +150,11 @@ test('the API answers 429 with Retry-After per user; tiles have their own budget
   const open = createApi({ limits: NO_LIMITS, basemap: 'none', edition: 'selfhost' } as never, { resolve: async () => ({ ok: false, code: 'x', message: 'x' }) } as never);
   for (let i = 0; i < 300; i++) assert.equal((await open(req, new URL('http://x/api/me'), { id: 'u', name: 'u', roles: [], groups: [] })).status, 200);
 });
+
+test('DONATE_URL: empty by default, only https addresses without credentials', () => {
+  assert.equal(loadConfig({}).donateUrl, '');
+  assert.equal(loadConfig({ DONATE_URL: 'https://github.com/sponsors/ralpje' }).donateUrl, 'https://github.com/sponsors/ralpje');
+  for (const bad of ['http://example.com', 'javascript:alert(1)', 'not a url', 'https://user:pw@example.com/']) {
+    assert.throws(() => loadConfig({ DONATE_URL: bad }), /DONATE_URL/, bad);
+  }
+});
