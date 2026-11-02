@@ -1,0 +1,32 @@
+# The maintainer writes "@claude ..." in an issue or pull request comment; Claude then does the work on a
+# branch and opens a pull request. It never merges. Only the repository owner can start it.
+name: Claude on request
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  claude:
+    if: contains(github.event.comment.body, '@claude') && github.event.comment.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: claude-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Pinned to a commit (v1.0.266) because this step receives the Claude token. Update on purpose.
+      - uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --max-turns 40
