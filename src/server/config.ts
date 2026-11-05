@@ -63,6 +63,7 @@ export interface Config {
   limits: Limits;
   terms: Terms | null; // set with TERMS_VERSION; null = nobody is asked to accept anything
   donateUrl: string; // optional link to a page where people can support the project; empty = no link
+  landingPage: boolean; // LANDING_PAGE=1: serve a public welcome page under /welcome/ (and at / for people who are not signed in)
   easyAuthEnabled: boolean; // App Service sets WEBSITE_AUTH_ENABLED=True when authentication is switched on
 }
 
@@ -114,6 +115,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     terms: termsFrom(env),
     donateUrl: httpsUrl(env, 'DONATE_URL'),
+    landingPage: env.LANDING_PAGE === '1',
     easyAuthEnabled: env.WEBSITE_AUTH_ENABLED === 'True',
   };
 }
