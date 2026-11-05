@@ -20,8 +20,5 @@ Open questions about how Places treats our IMDF files. The results are recorded 
 - [#52](https://github.com/ralpje/placesbuilder/issues/52) Redesign of the interface
 - [#53](https://github.com/ralpje/placesbuilder/issues/53) Fewer manual steps between Places and Places Builder
 
-## Waiting
-- [#51](https://github.com/ralpje/placesbuilder/issues/51) Support link (GitHub Sponsors)
-
 ## How this list is kept
 Issues carry the labels `roadmap`, `idea`, `blocked`, `feedback` and `imdf-question`. When an item is finished, its issue is closed by the pull request and the line is removed here.
