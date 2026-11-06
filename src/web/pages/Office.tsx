@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.ts';
 import type { ImportResult } from '../api.ts';
 import type { OfficeDoc, ValidationReport } from '../../shared/types.ts';
+import { PlacesCommands } from '../PlacesCommands.tsx';
 
 export function OfficePage({ officeId }: { officeId: string }) {
   const [o, setO] = useState<OfficeDoc | null>(null);
@@ -88,7 +89,7 @@ export function OfficePage({ officeId }: { officeId: string }) {
 
       <div className="card" style={{ marginTop: 24 }}>
       <h2 style={{ marginTop: 0 }}>Places export</h2>
-      <p>Export with <code>Get-PlaceV3 -AncestorId &lt;building id&gt; | Export-Csv places.csv</code> and upload it. Only names, types, parents, capacity and floor order are kept.</p>
+      <p>Export the building from Places (commands below) and upload the CSV. Only names, types, parents, capacity and floor order are kept.</p>
       <p>{o.places ? `Imported ${o.places.items.length} items on ${new Date(o.places.importedAt).toLocaleString()}.` : 'Nothing imported yet.'}</p>
       <input type="file" accept=".csv,text/csv" onChange={(e) => upload(e.target.files?.[0])} />
       {imp && (
@@ -129,13 +130,8 @@ export function OfficePage({ officeId }: { officeId: string }) {
         <a className="button" href={api.correlationUrl(o.id)}>Download correlation CSV</a>
       </div>
       <p className="muted">
-        The IMDF zip already contains the Places IDs, so Import-MapCorrelations is not needed. Upload it with Places PowerShell
-        (Exchange or Places administrator; one building per zip; an existing map must be removed first with Remove-Map):
-      </p>
-      <pre><code>{`New-Map -BuildingId ${o.placesBuildingId ?? o.places?.buildingPlaceId ?? '<building PlaceId>'} -FilePath "<path to the downloaded zip>"`}</code></pre>
-      <p className="muted">
-        If New-Map rejects the zip, use the long route: <a href={api.mapFeaturesUrl(o.id)}>download mapfeatures.csv</a> (already filled in) and run{' '}
-        <code>Import-MapCorrelations -MapFilePath &lt;zip&gt; -CorrelationsFilePath &lt;mapfeatures.csv&gt;</code>, then New-Map with the resulting imdf_correlated.zip.
+        The IMDF zip already contains the Places IDs, so Import-MapCorrelations is not needed. If New-Map rejects the zip,{' '}
+        <a href={api.mapFeaturesUrl(o.id)}>download mapfeatures.csv</a> (already filled in) and use the fallback in the PowerShell commands.
       </p>
       {report && (
         <>
@@ -146,6 +142,7 @@ export function OfficePage({ officeId }: { officeId: string }) {
         </>
       )}
       </div>
+      <PlacesCommands buildingPlaceId={o.placesBuildingId ?? o.places?.buildingPlaceId} />
     </section>
   );
 }
