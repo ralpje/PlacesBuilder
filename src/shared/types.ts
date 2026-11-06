@@ -119,25 +119,6 @@ export interface CorrelationRow {
 
 export const FEATURE_KINDS: FeatureKind[] = ['outline', 'unit', 'section', 'workspace', 'desk'];
 
-/** IMDF unit categories offered in the editor. workspace and desk are Microsoft Places conventions. */
-export const UNIT_CATEGORIES = [
-  'room',
-  'conferenceroom',
-  'office',
-  'phoneroom',
-  'restroom',
-  'lobby',
-  'walkway',
-  'stairs',
-  'elevator',
-  'storage',
-  'serverroom',
-  'foodservice',
-  'opentobelow',
-  'nonpublic',
-  'unspecified',
-] as const;
-
 export interface MemberInfo { oid: string; name: string; email: string; role: 'owner' | 'member'; joinedAt: string }
 export interface InviteInfo { id: string; email: string; createdAt: string }
 export interface WorkspaceInfo { role: 'owner' | 'member'; members: MemberInfo[]; invites: InviteInfo[]; limit: number }

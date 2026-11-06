@@ -3,6 +3,7 @@ import { FEATURE_KINDS } from '../shared/types.ts';
 import type { Address, FeatureKind, FloorDoc, FloorIndexEntry, GeoRef, OfficeDoc, PlanFeature, Pt } from '../shared/types.ts';
 import { ordinalFromName, parsePlacesCsv } from '../shared/places.ts';
 import { normalizeDeg } from '../shared/georef.ts';
+import { exportUnitCategory } from '../shared/categories.ts';
 import { NO_LIMITS } from './config.ts';
 import type { Limits } from './config.ts';
 import { PreconditionError } from './storage.ts';
@@ -106,10 +107,12 @@ function cleanFeatures(v: unknown): PlanFeature[] {
     if (!FEATURE_KINDS.includes(x.kind as FeatureKind)) throw new HttpError(400, `Feature ${i + 1} has an unknown kind.`);
     const points = cleanPoints(x.points);
     if (!points) throw new HttpError(400, `Feature ${i + 1} has invalid points.`);
+    const kind = x.kind as FeatureKind;
     const f: PlanFeature = {
       id,
-      kind: x.kind as FeatureKind,
-      category: text(x.category, 40) || 'room',
+      kind,
+      // Units can only carry a category Places supports; anything else is stored as 'unspecified'.
+      category: kind === 'unit' ? exportUnitCategory(text(x.category, 40)) : text(x.category, 40) || 'room',
       name: text(x.name, 120),
       points,
     };
