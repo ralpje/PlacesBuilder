@@ -6,6 +6,7 @@ import { authenticate, whoami } from './auth.ts';
 import { createStorage } from './storage.ts';
 import { createWorkspaces } from './workspaces.ts';
 import { createApi, errorReply, sendReply } from './api.ts';
+import { hasPrincipal, isWelcomePath, serveWelcome, welcomeIndex } from './landing.ts';
 
 const cfg = loadConfig();
 const workspaces = createWorkspaces(cfg, await createStorage(cfg));
@@ -62,6 +63,20 @@ const server = createServer(async (req, res) => {
       res.writeHead(w.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify(w.body, null, 2));
       return;
+    }
+    if (cfg.landingPage && (req.method === 'GET' || req.method === 'HEAD')) {
+      // Public welcome page: only /welcome/*, and / for people without an identity. Everything else still needs one.
+      const signedIn = cfg.devAuth || hasPrincipal(req.headers);
+      const w = isWelcomePath(url.pathname)
+        ? await serveWelcome(root, url.pathname, cfg)
+        : url.pathname === '/' && !signedIn
+          ? await welcomeIndex(root, cfg)
+          : null;
+      if (w) {
+        res.writeHead(w.status, w.headers);
+        res.end(req.method === 'HEAD' ? undefined : w.body);
+        return;
+      }
     }
     const auth = authenticate(req.headers, cfg);
     if (!auth.ok) {

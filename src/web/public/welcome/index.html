@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Places Builder: floor plans to Microsoft Places maps</title>
+<meta name="description" content="Turn PDF, PNG or JPG floor plans into IMDF packages for Microsoft Places. Free and open source.">
+<meta name="theme-color" content="#0A1224">
+<link rel="icon" href="/welcome/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/welcome/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/welcome/apple-touch-icon.png">
+<link rel="stylesheet" href="/welcome/welcome.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav" aria-label="Main">
+    <a class="brand" href="/welcome/"><img src="/welcome/logo-mark.svg" alt="" width="34" height="34"><span>Places Builder</span></a>
+    <a class="btn btn-primary" href="{{SIGNIN_URL}}">Sign in</a>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div>
+      <div class="pill"><b>BETA</b><span>Free beta. Sign in with your Microsoft work account.</span></div>
+      <h1>Floor plans to Microsoft Places maps, without the manual work.</h1>
+      <p class="lead">Upload a PDF, PNG or JPG floor plan, match its rooms to your Places export, and download an IMDF package that Microsoft Places accepts.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="{{SIGNIN_URL}}">Sign in with your work account</a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+      <p class="fine">The first sign-in in your organisation needs a one-time approval from an administrator.</p>
+    </div>
+    <div class="window">
+      <div class="window-bar"><i></i><i></i><i></i><span>Level 2</span></div>
+      <svg viewBox="0 0 520 380" role="img" aria-label="Illustration of a floor plan with one room matched to Places">
+        <rect x="344" y="124" width="156" height="236" fill="#7FB2FF" fill-opacity="0.18"/>
+        <rect x="16" y="16" width="488" height="348" rx="8" fill="none" stroke="#3A5488" stroke-width="4"/>
+        <path d="M190 16V200 M16 200H340 M340 120V364 M340 120H504" stroke="#3A5488" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <g fill="#A9B8D3" font-family="Manrope, system-ui, sans-serif" font-size="13" font-weight="600">
+          <text x="103" y="112" text-anchor="middle">Focus</text>
+          <text x="347" y="72" text-anchor="middle">Open space</text>
+          <text x="422" y="246" text-anchor="middle" fill="#EAF0FB">Meeting 1</text>
+          <text x="178" y="346" text-anchor="middle">Workspace</text>
+        </g>
+        <g fill="none" stroke="#3A5488" stroke-width="2.5">
+          <rect x="44" y="228" width="40" height="22" rx="3"/><rect x="104" y="228" width="40" height="22" rx="3"/><rect x="164" y="228" width="40" height="22" rx="3"/><rect x="224" y="228" width="40" height="22" rx="3"/>
+          <rect x="44" y="270" width="40" height="22" rx="3"/><rect x="104" y="270" width="40" height="22" rx="3"/><rect x="164" y="270" width="40" height="22" rx="3"/><rect x="224" y="270" width="40" height="22" rx="3"/>
+        </g>
+        <rect x="364" y="296" width="116" height="30" rx="15" fill="#7FB2FF"/>
+        <text x="422" y="316" text-anchor="middle" fill="#08101F" font-family="Manrope, system-ui, sans-serif" font-size="13" font-weight="800">Matched</text>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<section class="facts" aria-label="At a glance">
+  <div class="wrap">
+    <div><strong>PDF, PNG, JPG</strong><span>Your floor plan as it is</span></div>
+    <div><strong>IMDF output</strong><span>Accepted by Microsoft Places</span></div>
+    <div><strong>Offices and floors</strong><span>Several floors per office</span></div>
+    <div><strong>Open source</strong><span>AGPL-3.0, self-host it</span></div>
+  </div>
+</section>
+
+<section class="s" id="how">
+  <div class="wrap">
+    <p class="eyebrow">How it works</p>
+    <h2>From floor plan to Places map in three steps.</h2>
+    <div class="grid">
+      <div class="card"><div class="step"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg></span><small>STEP 1</small></div>
+        <h3>Add your floor plan</h3><p>Create an office with its floors and upload a plan per floor. Place, scale and rotate it on the satellite map.</p></div>
+      <div class="card"><div class="step"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></span><small>STEP 2</small></div>
+        <h3>Match rooms to Places</h3><p>Import your Places export and draw each room on the plan. Every room is linked to its place in Microsoft Places.</p></div>
+      <div class="card"><div class="step"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg></span><small>STEP 3</small></div>
+        <h3>Download and import</h3><p>Download the IMDF package and import it into Microsoft Places yourself. This app changes nothing in your Places tenant.</p></div>
+    </div>
+    <div class="flow">
+      <svg viewBox="0 0 960 150" role="img" aria-label="Flow: floor plan, align on map, trace rooms, match with Places export, IMDF zip, Microsoft Places">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7FB2FF"/></marker></defs>
+        <g font-family="Manrope, system-ui, sans-serif" font-size="14" font-weight="700" text-anchor="middle">
+          <g><rect x="10" y="40" width="130" height="70" rx="14" fill="#0A1224" stroke="#22345A" stroke-width="2"/><text x="75" y="70" fill="#EAF0FB">Floor plan</text><text x="75" y="90" fill="#A9B8D3" font-size="12" font-weight="600">PDF, PNG, JPG</text></g>
+          <g><rect x="180" y="40" width="130" height="70" rx="14" fill="#0A1224" stroke="#22345A" stroke-width="2"/><text x="245" y="70" fill="#EAF0FB">Align</text><text x="245" y="90" fill="#A9B8D3" font-size="12" font-weight="600">on the map</text></g>
+          <g><rect x="350" y="40" width="130" height="70" rx="14" fill="#0A1224" stroke="#22345A" stroke-width="2"/><text x="415" y="70" fill="#EAF0FB">Trace</text><text x="415" y="90" fill="#A9B8D3" font-size="12" font-weight="600">rooms and desks</text></g>
+          <g><rect x="520" y="40" width="130" height="70" rx="14" fill="#0A1224" stroke="#22345A" stroke-width="2"/><text x="585" y="70" fill="#EAF0FB">Match</text><text x="585" y="90" fill="#A9B8D3" font-size="12" font-weight="600">with Places export</text></g>
+          <g><rect x="690" y="40" width="110" height="70" rx="14" fill="#12254a" stroke="#7FB2FF" stroke-width="2"/><text x="745" y="70" fill="#EAF0FB">IMDF</text><text x="745" y="90" fill="#A9B8D3" font-size="12" font-weight="600">zip package</text></g>
+          <g><rect x="840" y="40" width="110" height="70" rx="14" fill="#7FB2FF"/><text x="895" y="70" fill="#08101F">Microsoft</text><text x="895" y="90" fill="#08101F" font-size="12" font-weight="700">Places</text></g>
+        </g>
+        <g stroke="#7FB2FF" stroke-width="2.5" fill="none" marker-end="url(#ar)"><path d="M142 75H176"/><path d="M312 75H346"/><path d="M482 75H516"/><path d="M652 75H686"/><path d="M802 75H836"/></g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="s" style="padding-top:0">
+  <div class="wrap">
+    <p class="eyebrow">What you get</p>
+    <h2>Built for the people who set up Places.</h2>
+    <div class="grid grid-4">
+      <div class="card"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V7l9-4 9 4v14M9 21v-6h6v6"/></svg></span><h3>Offices and floors</h3><p>Keep every office with its floors in one place and come back to fix a single room later.</p></div>
+      <div class="card"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg></span><h3>Rooms, sections, desks</h3><p>Trace rooms, work areas and desks on your own drawing, on top of a satellite map.</p></div>
+      <div class="card"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span><h3>Matched to Places</h3><p>Rooms are suggested from your Places export, so you confirm instead of typing.</p></div>
+      <div class="card"><span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span><h3>Checked output</h3><p>The package is validated before you download it, and the open-source code is there to read.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" style="padding-top:0">
+  <div class="wrap">
+    <p class="eyebrow">Your data</p>
+    <h2>Kept apart per organisation.</h2>
+    <div class="trust">
+      <div><strong>Sign-in with Microsoft</strong><p>Work accounts only, through Microsoft Entra. People are recognised by tenant and user ID, not by e-mail address.</p></div>
+      <div><strong>A workspace per organisation</strong><p>An organisation only sees its own offices and floor plans. The separation is covered by automated tests.</p></div>
+      <div><strong>Deletion on request</strong><p>Ask and your workspace is deleted. The terms and the privacy statement say how, and how long it takes.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" style="padding-top:0" id="faq">
+  <div class="wrap">
+    <p class="eyebrow">Questions, answered</p>
+    <h2>Frequently asked questions</h2>
+    <details name="faq" open><summary>Do I need admin rights to use it?</summary><p>Only once. The first person from your organisation to sign in needs an administrator to approve the app. After that, colleagues can be invited into the workspace without further approval.</p></details>
+    <details name="faq"><summary>Is it free?</summary><p>Yes. The project does not charge for the service; it relies on voluntary donations. The beta comes without a service level and can change as it proceeds.</p></details>
+    <details name="faq"><summary>Does it change anything in Microsoft Places?</summary><p>No. The app produces an IMDF package. You import it into Microsoft Places yourself.</p></details>
+    <details name="faq"><summary>Can I run it myself?</summary><p>Yes. It is open source under the AGPL-3.0 licence and deploys to your own Azure subscription.</p></details>
+  </div>
+</section>
+
+<section class="s" style="padding-top:0">
+  <div class="wrap">
+    <div class="closing-box">
+      <div><h2>Ready to try it?</h2><p>This is an early version. Feedback is welcome through a GitHub issue. Please do not post floor plans or tenant data there.</p></div>
+      <div class="cta" style="margin:0"><a class="btn btn-primary" href="{{SIGNIN_URL}}">Sign in with your work account</a><!--DONATE--></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="links"><a href="https://placesbuilder.com">Website and documentation</a><a href="https://github.com/ralpje/placesbuilder">GitHub</a><!--LEGAL_LINKS--></div>
+    <p>Places Builder is an independent project and is not affiliated with, endorsed by or supported by Microsoft. Microsoft, Microsoft Places, Azure and Entra are trademarks of the Microsoft group of companies.</p>
+  </div>
+</footer>
+</body>
+</html>
