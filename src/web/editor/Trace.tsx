@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api.ts';
-import { UNIT_CATEGORIES } from '../../shared/types.ts';
+import { CATEGORY_GROUPS, UNIT_CATEGORY_CATALOG, categoryInfo, isUnitCategory } from '../../shared/categories.ts';
 import type { FeatureKind, PlacesItem, PlanFeature, Pt } from '../../shared/types.ts';
 import { descendantsOfFloor } from '../../shared/places.ts';
 import { suggest } from '../../shared/match.ts';
@@ -177,9 +177,17 @@ export function Trace({ ctx }: { ctx: EditorCtx }) {
             <>
               <h3>{selected.kind}</h3>
               {selected.kind === 'unit' && (
-                <label>Category<select value={selected.category} onChange={(e) => update(selected.id, { category: e.target.value })}>
-                  {UNIT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select></label>
+                <>
+                  <label>Category<select value={selected.category} onChange={(e) => update(selected.id, { category: e.target.value })}>
+                    {!isUnitCategory(selected.category) && <option value={selected.category}>{selected.category} (not supported by Places)</option>}
+                    {CATEGORY_GROUPS.map((g) => (
+                      <optgroup key={g} label={g}>
+                        {UNIT_CATEGORY_CATALOG.filter((c) => c.group === g).map((c) => <option key={c.value} value={c.value}>{c.label}{c.support === 'icon' ? ' (icon in Places)' : ''}</option>)}
+                      </optgroup>
+                    ))}
+                  </select></label>
+                  <p className="muted">{categoryInfo(selected.category)?.note ?? 'This category is not supported by Places. It is exported as "unspecified"; pick one from the list.'}</p>
+                </>
               )}
               <label>Kind<select value={selected.kind} onChange={(e) => update(selected.id, { kind: e.target.value as FeatureKind, category: DEFAULT_CATEGORY[e.target.value as FeatureKind] })}>
                 {(['outline', 'unit', 'section', 'workspace', 'desk'] as FeatureKind[]).map((k) => <option key={k}>{k}</option>)}

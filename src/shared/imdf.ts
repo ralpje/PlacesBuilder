@@ -2,6 +2,7 @@ import { area, pointOnSurface, signedArea } from './geometry.ts';
 import { normalizeDeg, planToLonLat } from './georef.ts';
 import { stableUuid } from './ids.ts';
 import { toCsv } from './csv.ts';
+import { exportUnitCategory } from './categories.ts';
 import type {
   CorrelationRow,
   DeskExportMode,
@@ -325,8 +326,11 @@ export function buildImdf(office: OfficeDoc, allFloors: FloorDoc[], opts: ImdfOp
         );
         link(x, x.id, 'fixture.geojson');
       } else {
-        const category =
-          x.kind === 'workspace' ? A.workspaceUnitCategory : x.kind === 'desk' ? A.deskUnitCategory : x.category || 'room';
+        const own = exportUnitCategory(x.category);
+        if (x.kind === 'unit' && x.category && own !== x.category) {
+          warnings.push(`"${displayName(x) || x.id}" on floor "${f.name}" has the category "${x.category}", which Places does not support. It is exported as "unspecified".`);
+        }
+        const category = x.kind === 'workspace' ? A.workspaceUnitCategory : x.kind === 'desk' ? A.deskUnitCategory : own;
         units.push(
           feature(x.id, 'unit', geom, {
             category,

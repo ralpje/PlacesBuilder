@@ -1,5 +1,6 @@
 import { area, distToRing, pointInPolygon, pointOnSurface, selfIntersects } from './geometry.ts';
 import { includedFloors } from './imdf.ts';
+import { isUnitCategory } from './categories.ts';
 import { descendantsOfFloor } from './places.ts';
 import type { FloorDoc, OfficeDoc, PlanFeature, PlacesItem, Problem, ValidationReport } from './types.ts';
 
@@ -79,6 +80,9 @@ export function validateProject(office: OfficeDoc, allFloors: FloorDoc[]): Valid
       if (!inside(x.points, outline.points)) add('warning', `${label} reaches outside the floor outline.`, f.id, x.id);
 
       if (x.kind === 'unit') stats.units++;
+      if (x.kind === 'unit' && x.category && !isUnitCategory(x.category)) {
+        add('warning', `${label} has the category "${x.category}", which Places does not support. It is exported as "unspecified"; pick a category from the list.`, f.id, x.id);
+      }
       if (x.kind === 'section') stats.sections++;
       if (x.kind === 'workspace') stats.workspaces++;
       if (x.kind === 'desk') stats.desks++;

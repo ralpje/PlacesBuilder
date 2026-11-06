@@ -16,3 +16,4 @@
 5. Group claims in Easy Auth for the second access check (token size/overage with many groups). ([#50](https://github.com/ralpje/placesbuilder/issues/50))
 6. Whether the Microsoft-style capitalised file names or a missing manifest matter (our lowercase names with manifest were accepted). ([#48](https://github.com/ralpje/placesbuilder/issues/48))
 7. How Places SortOrder is set for floors that have none (probably `Set-PlaceV3 -SortOrder`, not checked). ([#49](https://github.com/ralpje/placesbuilder/issues/49))
+8. Which unit categories Places accepts and shows, and whether it rejects a valid but unlisted one or an invalid one. The editor offers a catalog based on documentation and field reports (docs/places-categories.md). ([#64](https://github.com/ralpje/placesbuilder/issues/64))
