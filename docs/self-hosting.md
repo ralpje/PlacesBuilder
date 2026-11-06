@@ -64,4 +64,4 @@ After exporting from Places Builder, upload the zip with Places PowerShell (Exch
 New-Map -BuildingId <building PlaceId> -FilePath "<path to the downloaded zip>"
 ```
 
-The Places IDs are already inside the zip. A map can take up to an hour to appear. To replace a map, run `Remove-Map -BuildingId <building PlaceId>` first. Every floor must have a unique SortOrder in Places that equals the floor ordinal in Places Builder.
+The Places IDs are already inside the zip. A map can take up to an hour to appear. To replace a map, run `Remove-Map -BuildingId <building PlaceId>` first. Every floor must have a unique SortOrder in Places that equals the floor ordinal in Places Builder. All Places commands, including the export, are in [powershell.md](powershell.md).
