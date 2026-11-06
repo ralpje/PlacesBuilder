@@ -34,6 +34,7 @@ npm run build && npm start
 | `MAX_OFFICES`, `MAX_FLOORS_PER_OFFICE`, `MAX_UPLOAD_MB`, `MAX_STORAGE_MB` | Optional limits: offices per workspace, floors per office, size of one uploaded file, total storage of the workspace (all in whole numbers; megabytes are 1024 x 1024 bytes). Empty or `0` means no limit, which is the default. |
 | `RATE_LIMIT_PER_MINUTE`, `TILE_LIMIT_PER_HOUR` | Optional request limits per signed-in user: API requests per minute (map tiles excluded) and map tiles per hour. Over the limit, the server answers HTTP 429 with a `Retry-After` header. Whole numbers; empty or `0` means no limit, which is the default. Counters are kept in memory per server process. |
 | `LANDING_PAGE` | `1` serves a public welcome page under `/welcome/` and at `/` for people who are not signed in (the web app is served from `/` once they are). Off by default. With Easy Auth, the platform must let `/welcome/*` (and `/` if you want it there) through: add them to `excludedPaths`. Everything else stays protected. |
+| `EXTENSION_MODULE` | Path of a JavaScript module that adds routes under `/api/ext/*` (see [docs/extensions.md](docs/extensions.md)). Empty by default: nothing is loaded and `/api/ext/*` answers 404. The module is trusted code running in the same process. |
 | `DONATE_URL` | Optional `https://` address. When set, the sidebar shows a "Support this project" link to it. Empty (the default) shows no link. |
 | `DEV_AUTH` | Local development only. The server refuses to start with it in production. |
 

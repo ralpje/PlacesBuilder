@@ -4,6 +4,8 @@ import type { Config } from './config.ts';
 import { APP_VERSION } from '../shared/version.ts';
 import type { User } from './auth.ts';
 import { HttpError } from './repo.ts';
+import { audit as writeAudit } from './audit.ts';
+import type { Extension } from './extension.ts';
 import type { Workspaces } from './workspaces.ts';
 import { fetchTile, geocode } from './maps.ts';
 import { RateLimiter } from './rateLimit.ts';
@@ -53,7 +55,7 @@ const tooMany = (wait: number, what: string): Reply => ({
   body: JSON.stringify({ error: `Too many ${what}. Try again in ${wait} seconds.`, code: 'rate_limit', retryAfter: wait }),
 });
 
-export function createApi(cfg: Config, workspaces: Workspaces) {
+export function createApi(cfg: Config, workspaces: Workspaces, extension: Extension | null = null) {
   const lim = cfg.limits ?? NO_LIMITS;
   const requestLimiter = new RateLimiter(lim.requestsPerMinute, 60_000);
   const tileLimiter = new RateLimiter(lim.tilesPerHour, 3_600_000);
@@ -62,7 +64,7 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
     const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
     const mutating = method !== 'GET' && method !== 'HEAD';
     if (mutating && req.headers['x-requested-with'] !== 'imdf-app') throw new HttpError(403, 'Missing X-Requested-With header.');
-    const audit = (what: string) => console.log(JSON.stringify({ t: new Date().toISOString(), user: user.id, what }));
+    const audit = (what: string) => writeAudit(user, what);
     const [a, b, c, d, e] = parts;
     if (a !== 'config') {
       const key = user.tenantId ? `${user.tenantId}/${user.id}` : user.id;
@@ -74,6 +76,13 @@ export function createApi(cfg: Config, workspaces: Workspaces) {
     const uploadMax = (hard: number) => (limits.maxUploadBytes ? Math.min(hard, limits.maxUploadBytes) : hard);
 
     if (a === 'config' && method === 'GET') return json(200, { basemap: cfg.basemap, version: APP_VERSION, limits, donateUrl: cfg.donateUrl ?? '' });
+
+    // Routes added by an extension (the hosted edition's operator tools). Not tied to a workspace: the extension decides who may call.
+    if (a === 'ext') {
+      const r = extension ? await extension.handle({ req, url, user, path: parts.slice(1) }) : null;
+      if (!r) throw new HttpError(404, 'Not found');
+      return r;
+    }
 
     const resolved = await workspaces.resolve(user);
     if (a === 'me' && method === 'GET') {

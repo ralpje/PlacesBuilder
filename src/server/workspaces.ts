@@ -29,6 +29,32 @@ export interface Workspaces {
   resolve(user: User): Promise<Resolved>;
   /** Records that the user accepted this version of the terms. Only the multi-organisation edition has it. */
   acceptTerms?(user: User, version: string): Promise<void>;
+  /** Operations on all tenants, for the operator of the hosted edition. Reached through the extension point only. */
+  readonly operator?: OperatorOps;
+}
+
+export interface TenantSummary {
+  tid: string;
+  ownerNameHint: string;
+  ownerEmailHint: string;
+  createdAt: string;
+  members: number;
+}
+
+/** What the operator of a hosted service may do with a tenant. The caller must have been authorized by the extension. */
+export interface OperatorOps {
+  listTenants(): Promise<TenantSummary[]>;
+  /** Members, open invitations and limit of one tenant. */
+  info(tid: string): Promise<WorkspaceInfo>;
+  /** Key and size of every file of the tenant's data (offices, floors, plans). File contents are not exposed. */
+  files(tid: string): Promise<{ key: string; size: number }[]>;
+  invite(tid: string, email: string, by: User): Promise<InviteInfo>;
+  revokeInvite(tid: string, id: string): Promise<void>;
+  /** The current owner cannot be removed; transfer ownership first. */
+  removeMember(tid: string, oid: string): Promise<void>;
+  transferOwnership(tid: string, oid: string): Promise<void>;
+  /** Removes every file of the tenant, including its members and invitations. Returns the number of files removed. */
+  deleteTenant(tid: string): Promise<number>;
 }
 
 export type { InviteInfo, MemberInfo, WorkspaceInfo };
@@ -217,7 +243,50 @@ export class TenantWorkspaces implements Workspaces {
     this.cache.delete(`${tid}/${oid}`);
   }
 
-  private adminFor(tid: string, role: 'owner' | 'member'): WorkspaceAdmin {
+  readonly operator: OperatorOps = {
+    listTenants: async () => {
+      const out: TenantSummary[] = [];
+      for (const k of await this.storage.list('tenants/')) {
+        const m = /^tenants\/([0-9a-f-]{36})\/tenant\.json$/.exec(k);
+        if (!m) continue;
+        const t = await readDoc<TenantDoc>(this.storage, k);
+        if (!t) continue;
+        const members = (await this.storage.list(K.members(m[1]))).length;
+        out.push({ tid: t.tid, ownerNameHint: t.ownerNameHint, ownerEmailHint: t.ownerEmailHint, createdAt: t.createdAt, members });
+      }
+      return out.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    },
+    info: async (tid) => this.operatorAdmin(tid).info(),
+    files: async (tid) => {
+      this.checkTid(tid);
+      const p = K.data(tid);
+      return (await this.storage.listWithSize(p)).map((e) => ({ key: e.key.slice(p.length), size: e.size }));
+    },
+    invite: async (tid, email, by) => this.operatorAdmin(tid).invite(email, by),
+    revokeInvite: async (tid, id) => this.operatorAdmin(tid).revokeInvite(id),
+    removeMember: async (tid, oid) => this.operatorAdmin(tid).removeMember(oid, { id: '', name: '', roles: [], groups: [] }),
+    transferOwnership: async (tid, oid) => this.operatorAdmin(tid).transferOwnership(oid, { id: '', name: '', roles: [], groups: [] }),
+    deleteTenant: async (tid) => {
+      this.checkTid(tid);
+      if (!(await readDoc<TenantDoc>(this.storage, K.tenant(tid)))) throw new HttpError(404, 'Not found');
+      const keys = await this.storage.list(`tenants/${tid}/`);
+      for (const k of keys) await this.storage.delete(k);
+      this.repos.delete(tid);
+      for (const c of [...this.cache.keys()]) if (c.startsWith(`${tid}/`)) this.cache.delete(c);
+      return keys.length;
+    },
+  };
+
+  private checkTid(tid: string): void {
+    if (!GUID.test(tid)) throw new HttpError(404, 'Not found');
+  }
+
+  private operatorAdmin(tid: string): WorkspaceAdmin {
+    this.checkTid(tid);
+    return this.adminFor(tid, 'owner', true);
+  }
+
+  private adminFor(tid: string, role: 'owner' | 'member', operator = false): WorkspaceAdmin {
     const s = this.storage;
     const needOwner = () => {
       if (role !== 'owner') throw new HttpError(403, 'Only the owner can do this.');
@@ -260,21 +329,25 @@ export class TenantWorkspaces implements Workspaces {
         needOwner();
         const o = oid.toLowerCase();
         if (!GUID.test(o)) throw new HttpError(404, 'Not found');
-        if (o === by.id.toLowerCase()) throw new HttpError(400, 'The owner cannot remove themselves.');
+        if (operator) {
+          if ((await readDoc<TenantDoc>(s, K.tenant(tid)))?.ownerOid === o) throw new HttpError(409, 'That person owns the organization. Transfer ownership first.');
+        } else if (o === by.id.toLowerCase()) throw new HttpError(400, 'The owner cannot remove themselves.');
         await s.delete(K.member(tid, o));
         this.cache.delete(`${tid}/${o}`);
       },
       transferOwnership: async (oid, by) => {
         needOwner();
         const target = oid.toLowerCase();
-        const me = by.id.toLowerCase();
         if (!GUID.test(target)) throw new HttpError(404, 'Not found');
-        if (target === me) throw new HttpError(400, 'You are already the owner.');
-        const member = await readDoc<MemberDoc>(s, K.member(tid, target));
-        if (!member) throw new HttpError(404, 'That person is not a member of this organization.');
         const stored = await s.get(K.tenant(tid));
         const tenant = stored ? (JSON.parse(stored.data.toString('utf8')) as TenantDoc) : null;
-        if (!stored || !tenant || tenant.ownerOid !== me) throw new HttpError(403, 'Only the owner can do this.');
+        if (!stored || !tenant) throw new HttpError(404, 'Not found');
+        // The owner hands over; the operator hands over on the owner's behalf, so the previous owner is whoever the tenant says.
+        const me = operator ? tenant.ownerOid : by.id.toLowerCase();
+        if (target === me) throw new HttpError(400, operator ? 'That person already owns the organization.' : 'You are already the owner.');
+        const member = await readDoc<MemberDoc>(s, K.member(tid, target));
+        if (!member) throw new HttpError(404, 'That person is not a member of this organization.');
+        if (!operator && tenant.ownerOid !== me) throw new HttpError(403, 'Only the owner can do this.');
         const next: TenantDoc = { ...tenant, ownerOid: target, ownerNameHint: maskName(member.name), ownerEmailHint: maskEmail(member.email) };
         try {
           await s.put(K.tenant(tid), enc(next), 'application/json', { ifMatch: stored.etag }); // this single write is the transfer
