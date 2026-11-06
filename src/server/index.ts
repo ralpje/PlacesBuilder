@@ -6,11 +6,13 @@ import { authenticate, whoami } from './auth.ts';
 import { createStorage } from './storage.ts';
 import { createWorkspaces } from './workspaces.ts';
 import { createApi, errorReply, sendReply } from './api.ts';
+import { loadExtension } from './extension.ts';
 import { hasPrincipal, isWelcomePath, serveWelcome, welcomeIndex } from './landing.ts';
 
 const cfg = loadConfig();
-const workspaces = createWorkspaces(cfg, await createStorage(cfg));
-const api = createApi(cfg, workspaces);
+const storage = await createStorage(cfg);
+const workspaces = createWorkspaces(cfg, storage);
+const api = createApi(cfg, workspaces, await loadExtension(cfg, storage, workspaces));
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
