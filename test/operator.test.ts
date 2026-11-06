@@ -7,6 +7,7 @@ import { Readable } from 'node:stream';
 import type { IncomingMessage } from 'node:http';
 import { LocalStorage } from '../src/server/storage.ts';
 import { TenantWorkspaces, SingleWorkspace } from '../src/server/workspaces.ts';
+import type { Workspaces } from '../src/server/workspaces.ts';
 import { createApi } from '../src/server/api.ts';
 import { loadExtension } from '../src/server/extension.ts';
 import { audit } from '../src/server/audit.ts';
@@ -30,7 +31,6 @@ async function setup() {
   assert.ok(a.ok);
   await ws.operator.invite(TID_A, 'bob@contoso.com', alice);
   assert.ok((await ws.resolve(bob)).ok);
-  await a.workspace.repo.createOffice({ name: 'HQ' } as never).catch(() => undefined);
   await storage.put(`tenants/${TID_A}/data/offices/o1/floors/f1/plan.png`, Buffer.from('x'.repeat(10)), 'image/png');
   assert.ok((await ws.resolve(carol)).ok);
   return { storage, ws };
@@ -100,7 +100,8 @@ test('deleting a tenant removes all of its files and nothing else', async () => 
 });
 
 test('the self-host edition has no operator operations', () => {
-  assert.equal(new SingleWorkspace(new LocalStorage(tmpdir())).operator, undefined);
+  const single: Workspaces = new SingleWorkspace(new LocalStorage(tmpdir()));
+  assert.equal(single.operator, undefined);
 });
 
 // ---- extension point
