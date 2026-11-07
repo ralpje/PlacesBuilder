@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
       # Pinned to a commit (v1.0.266) because this step receives the Claude token. Update on purpose.
-      - uses: anthropics/claude-code-action@d535f5172dec02b204866b393d6b20b9b2aaf98d
+      - uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
